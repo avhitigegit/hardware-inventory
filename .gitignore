@@ -143,3 +143,4 @@ vite.config.ts.timestamp-*
 .vite/
 terminal-out
 Implementation-manual.md
+git-branching
