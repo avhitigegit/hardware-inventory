@@ -5,9 +5,10 @@ export async function middleware(request: NextRequest) {
   const { supabase, supabaseResponse, user } = await updateSession(request)
   const { pathname } = request.nextUrl
 
-  // No session — allow /login, block everything else
+  // Public routes — accessible without authentication
+  const publicRoutes = ['/login', '/forgot-password', '/reset-password']
   if (!user) {
-    if (pathname === '/login') return supabaseResponse
+    if (publicRoutes.includes(pathname)) return supabaseResponse
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -23,6 +24,9 @@ export async function middleware(request: NextRequest) {
     await supabase.auth.signOut()
     return NextResponse.redirect(new URL('/login?deactivated=true', request.url))
   }
+
+  // Allow authenticated user to stay on reset-password to set new password
+  if (pathname === '/reset-password') return supabaseResponse
 
   // Authenticated user visiting /login — redirect by role
   if (pathname === '/login') {

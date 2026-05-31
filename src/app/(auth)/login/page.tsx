@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { signIn } from '@/actions/auth.actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -106,6 +107,11 @@ function LoginForm() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign In'}
             </Button>
+            <div className="text-center">
+              <Link href="/forgot-password" className="text-sm text-gray-500 hover:text-gray-700 hover:underline">
+                Forgot password?
+              </Link>
+            </div>
           </form>
         </Form>
       </CardContent>
