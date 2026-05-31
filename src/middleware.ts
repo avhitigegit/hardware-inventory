@@ -28,6 +28,11 @@ export async function middleware(request: NextRequest) {
   // Allow authenticated user to stay on reset-password to set new password
   if (pathname === '/reset-password') return supabaseResponse
 
+  // ADMIN-only routes — redirect others to dashboard
+  if (pathname.startsWith('/users') && userData.role !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
   // Authenticated user visiting /login — redirect by role
   if (pathname === '/login') {
     const role = userData.role
