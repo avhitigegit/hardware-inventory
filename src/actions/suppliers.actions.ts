@@ -17,6 +17,25 @@ export async function getSuppliers(): Promise<ActionResult<any[]>> {
   return { data, error: null }
 }
 
+export async function getSupplierList(filters?: {
+  page?: number
+}): Promise<ActionResult<{ suppliers: any[]; total: number }>> {
+  const supabase = await createClient()
+  const PAGE_SIZE = 20
+  const page = filters?.page ?? 1
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
+  const { data, error, count } = await supabase
+    .from('suppliers')
+    .select('*', { count: 'exact' })
+    .range(from, to)
+    .order('name')
+
+  if (error) return { data: null, error: error.message }
+  return { data: { suppliers: data ?? [], total: count ?? 0 }, error: null }
+}
+
 export async function getSupplierById(id: number): Promise<ActionResult<any>> {
   const supabase = await createClient()
 

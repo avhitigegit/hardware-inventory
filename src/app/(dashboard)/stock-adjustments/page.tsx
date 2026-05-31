@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
+import PaginationBar from '@/components/ui/pagination-bar'
 
 export default function StockAdjustmentsPage() {
   const queryClient = useQueryClient()
@@ -123,15 +124,7 @@ export default function StockAdjustmentsPage() {
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Page {page} of {totalPages} — {total} total</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
-          </div>
-        </div>
-      )}
+      <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemLabel="adjustments" />
 
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) { form.reset(); setSelectedProductStock(null) } setDialogOpen(o) }}>
         <DialogContent className="max-w-md">

@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
+import PaginationBar from '@/components/ui/pagination-bar'
 import { useUser } from '@/hooks/useUser'
 import { cn } from '@/lib/utils'
 
@@ -168,16 +169,7 @@ export default function ProductsPage() {
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-500">Page {page} of {totalPages} — {total} total</span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-            <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}>Next</Button>
-          </div>
-        </div>
-      )}
+      <PaginationBar page={page} totalPages={totalPages} total={total} onPageChange={setPage} itemLabel="products" />
 
       {/* Delete Dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setDeleteError('') } }}>

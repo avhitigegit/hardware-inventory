@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { getCustomers } from '@/actions/customers.actions'
-import { createCustomer } from '@/actions/customers.actions'
+import { getCustomerList, createCustomer } from '@/actions/customers.actions'
 import { customerSchema, type CustomerInput } from '@/lib/validations/customer.schema'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -15,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
+import PaginationBar from '@/components/ui/pagination-bar'
 import { useUser } from '@/hooks/useUser'
 
 export default function CustomersPage() {
@@ -23,17 +23,20 @@ export default function CustomersPage() {
   const { user } = useUser()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creditOnly, setCreditOnly] = useState(false)
+  const [page, setPage] = useState(1)
 
-  const { data: customers = [], isLoading } = useQuery({
-    queryKey: ['customers'],
+  const { data, isLoading } = useQuery({
+    queryKey: ['customers-list', creditOnly, page],
     queryFn: async () => {
-      const result = await getCustomers()
+      const result = await getCustomerList({ creditOnly, page })
       if (result.error) throw new Error(result.error)
-      return result.data ?? []
+      return result.data
     },
   })
 
-  const displayed = creditOnly ? customers.filter((c: any) => c.credit_balance > 0) : customers
+  const customers = data?.customers ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.ceil(total / 20)
 
   const form = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
@@ -45,6 +48,7 @@ export default function CustomersPage() {
     onSuccess: (result) => {
       if (result.error) { toast.error(result.error); return }
       toast.success('Customer added.')
+      queryClient.invalidateQueries({ queryKey: ['customers-list'] })
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setDialogOpen(false)
       form.reset()
@@ -53,12 +57,17 @@ export default function CustomersPage() {
 
   const canWrite = user?.role && ['ADMIN', 'OWNER', 'CASHIER'].includes(user.role)
 
+  const handleCreditToggle = () => {
+    setCreditOnly(!creditOnly)
+    setPage(1)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
-          <p className="text-sm text-gray-500">{customers.length} customers</p>
+          <p className="text-sm text-gray-500">{total} customers</p>
         </div>
         {canWrite && <Button onClick={() => setDialogOpen(true)}>Add Customer</Button>}
       </div>
@@ -66,7 +75,7 @@ export default function CustomersPage() {
       <div className="flex gap-3">
         <Button
           variant={creditOnly ? 'default' : 'outline'}
-          onClick={() => setCreditOnly(!creditOnly)}
+          onClick={handleCreditToggle}
         >
           {creditOnly ? 'Credit Customers ✓' : 'Credit Customers Only'}
         </Button>
@@ -92,15 +101,15 @@ export default function CustomersPage() {
                     ))}
                   </tr>
                 ))
-              : displayed.length === 0
+              : customers.length === 0
               ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
-                      {creditOnly ? 'No customers with outstanding credit.' : 'No customers yet.'}
+                      {creditOnly ? 'No customers with outstanding credit.' : 'No customers yet. Add your first customer.'}
                     </td>
                   </tr>
                 )
-              : displayed.map((c: any) => (
+              : customers.map((c: any) => (
                   <tr key={c.id} className="hover:bg-gray-50 cursor-pointer"
                     onClick={() => router.push(`/customers/${c.id}`)}>
                     <td className="px-4 py-3 font-medium text-blue-600">{c.name}</td>
@@ -117,6 +126,14 @@ export default function CustomersPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPageChange={setPage}
+        itemLabel="customers"
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">

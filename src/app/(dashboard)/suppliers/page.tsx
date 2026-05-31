@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { getSuppliers, createSupplier } from '@/actions/suppliers.actions'
+import { getSupplierList, createSupplier } from '@/actions/suppliers.actions'
 import { supplierSchema, type SupplierInput } from '@/lib/validations/supplier.schema'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -14,20 +14,26 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Skeleton } from '@/components/ui/skeleton'
+import PaginationBar from '@/components/ui/pagination-bar'
 
 export default function SuppliersPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [page, setPage] = useState(1)
 
-  const { data: suppliers = [], isLoading } = useQuery({
-    queryKey: ['suppliers'],
+  const { data, isLoading } = useQuery({
+    queryKey: ['suppliers-list', page],
     queryFn: async () => {
-      const result = await getSuppliers()
+      const result = await getSupplierList({ page })
       if (result.error) throw new Error(result.error)
-      return result.data ?? []
+      return result.data
     },
   })
+
+  const suppliers = data?.suppliers ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.ceil(total / 20)
 
   const form = useForm<SupplierInput>({
     resolver: zodResolver(supplierSchema),
@@ -39,6 +45,7 @@ export default function SuppliersPage() {
     onSuccess: (result) => {
       if (result.error) { toast.error(result.error); return }
       toast.success('Supplier added.')
+      queryClient.invalidateQueries({ queryKey: ['suppliers-list'] })
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       setDialogOpen(false)
       form.reset()
@@ -50,7 +57,7 @@ export default function SuppliersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Suppliers</h1>
-          <p className="text-sm text-gray-500">{suppliers.length} suppliers</p>
+          <p className="text-sm text-gray-500">{total} suppliers</p>
         </div>
         <Button onClick={() => setDialogOpen(true)}>Add Supplier</Button>
       </div>
@@ -98,6 +105,14 @@ export default function SuppliersPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationBar
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPageChange={setPage}
+        itemLabel="suppliers"
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
