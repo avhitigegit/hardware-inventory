@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react'
 import { useUser } from '@/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import type { UserRole } from '@/types/database.types'
 
 type NavItem = {
@@ -14,6 +13,7 @@ type NavItem = {
   href: string
   roles: UserRole[]
   showLowStockBadge?: boolean
+  children?: { label: string; href: string }[]
 }
 
 const navItems: NavItem[] = [
@@ -25,7 +25,17 @@ const navItems: NavItem[] = [
   { label: 'Purchases / GRN', href: '/purchases', roles: ['ADMIN', 'OWNER', 'STORE_KEEPER'] },
   { label: 'Sales / POS', href: '/sales', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
   { label: 'Stock Adjustments', href: '/stock-adjustments', roles: ['ADMIN', 'OWNER', 'STORE_KEEPER'] },
-  { label: 'Reports', href: '/reports/daily', roles: ['ADMIN', 'OWNER'] },
+  {
+    label: 'Reports',
+    href: '/reports',
+    roles: ['ADMIN', 'OWNER'],
+    children: [
+      { label: 'Daily Report', href: '/reports/daily' },
+      { label: 'Monthly Report', href: '/reports/monthly' },
+      { label: 'Top Products', href: '/reports/top-products' },
+      { label: 'Low Stock', href: '/reports/low-stock' },
+    ],
+  },
   { label: 'Users', href: '/users', roles: ['ADMIN'] },
 ]
 
@@ -44,12 +54,13 @@ export default function Sidebar() {
   useEffect(() => {
     const fetchLowStock = async () => {
       const supabase = createClient()
-      const { count } = await supabase
+      // Column-to-column comparison needs JS-side filtering
+      const { data } = await supabase
         .from('products')
-        .select('*', { count: 'exact', head: true })
-        .lte('stock_quantity', 'reorder_level')
+        .select('stock_quantity, reorder_level')
         .eq('is_active', true)
-      setLowStockCount(count ?? 0)
+      const count = (data ?? []).filter(p => p.stock_quantity <= p.reorder_level).length
+      setLowStockCount(count)
     }
     if (user) fetchLowStock()
   }, [user])
@@ -67,9 +78,46 @@ export default function Sidebar() {
         <p className="text-xs text-gray-400 mt-0.5">Management System</p>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {visibleItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          const isReportsGroup = item.children && item.children.length > 0
+          const isGroupActive = pathname.startsWith(item.href)
+          const isExactActive = pathname === item.href
+
+          if (isReportsGroup) {
+            return (
+              <div key={item.href}>
+                <div className={cn(
+                  'flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-300',
+                  isGroupActive && 'text-white'
+                )}>
+                  <span>{item.label}</span>
+                </div>
+                <div className="ml-3 space-y-0.5">
+                  {item.children!.map((child) => {
+                    const childActive = pathname === child.href
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={cn(
+                          'flex items-center px-3 py-1.5 rounded-md text-sm transition-colors',
+                          childActive
+                            ? 'bg-gray-700 text-white font-medium'
+                            : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                        )}
+                      >
+                        <span className="mr-2 text-gray-600">›</span>
+                        {child.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          }
+
+          const isActive = isExactActive || (!isReportsGroup && isGroupActive)
           return (
             <Link
               key={item.href}
