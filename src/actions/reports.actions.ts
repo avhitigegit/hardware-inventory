@@ -206,13 +206,12 @@ export async function getMonthlyReport(year: number, month: number): Promise<Act
 
   const total_sales = (data ?? []).length
   const total_revenue = (data ?? []).reduce((s, r) => s + r.total_amount, 0)
-  const activeDays = days.length || 1
 
   return {
     data: {
       total_sales,
       total_revenue,
-      avg_daily_revenue: total_revenue / activeDays,
+      avg_daily_revenue: total_revenue / daysInMonth,
       days,
     },
     error: null,

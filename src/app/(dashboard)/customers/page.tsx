@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { getCustomerList, createCustomer } from '@/actions/customers.actions'
+import { getCustomerList, createCustomer, deleteCustomer } from '@/actions/customers.actions'
 import { customerSchema, type CustomerInput } from '@/lib/validations/customer.schema'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ export default function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creditOnly, setCreditOnly] = useState(false)
   const [page, setPage] = useState(1)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['customers-list', creditOnly, page],
@@ -55,7 +56,19 @@ export default function CustomersPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteCustomer(id),
+    onSuccess: (result) => {
+      if (result.error) { toast.error(result.error); setDeleteTarget(null); return }
+      toast.success(`${deleteTarget?.name} deleted.`)
+      queryClient.invalidateQueries({ queryKey: ['customers-list'] })
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      setDeleteTarget(null)
+    },
+  })
+
   const canWrite = user?.role && ['ADMIN', 'OWNER', 'CASHIER'].includes(user.role)
+  const canDelete = user?.role && ['ADMIN', 'OWNER'].includes(user.role)
 
   const handleCreditToggle = () => {
     setCreditOnly(!creditOnly)
@@ -90,13 +103,14 @@ export default function CustomersPage() {
               <th className="px-4 py-3 text-left font-medium text-gray-600">Email</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600">Credit Limit</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600">Credit Balance</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: 5 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
                     ))}
                   </tr>
@@ -104,7 +118,7 @@ export default function CustomersPage() {
               : customers.length === 0
               ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                    <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
                       {creditOnly ? 'No customers with outstanding credit.' : 'No customers yet. Add your first customer.'}
                     </td>
                   </tr>
@@ -121,6 +135,20 @@ export default function CustomersPage() {
                     <td className={`px-4 py-3 text-right font-medium ${c.credit_balance > 0 ? 'text-amber-600' : 'text-gray-600'}`}>
                       {formatCurrency(c.credit_balance)}
                     </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline"
+                          onClick={() => router.push(`/customers/${c.id}`)}>
+                          Edit
+                        </Button>
+                        {canDelete && (
+                          <Button size="sm" variant="destructive"
+                            onClick={() => setDeleteTarget({ id: c.id, name: c.name })}>
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
           </tbody>
@@ -134,6 +162,25 @@ export default function CustomersPage() {
         onPageChange={setPage}
         itemLabel="customers"
       />
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete Customer</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 pt-2">
+            Delete <strong>{deleteTarget?.name}</strong>? This cannot be undone.
+            <br />
+            <span className="text-xs text-gray-400 mt-1 block">Blocked if this customer has any sales history.</span>
+          </p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMutation.isPending}
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}>
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">

@@ -61,6 +61,9 @@ export default function SupplierDetailPage() {
 
   const infoForm = useForm<SupplierInput>({
     resolver: zodResolver(supplierSchema),
+    defaultValues: {
+      name: '', contact_person: '', phone: '', email: '', address: '',
+    },
     values: supplier ? {
       name: supplier.name,
       contact_person: supplier.contact_person ?? '',
@@ -82,6 +85,7 @@ export default function SupplierDetailPage() {
       toast.success('Supplier updated.')
       queryClient.invalidateQueries({ queryKey: ['supplier', id] })
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      queryClient.invalidateQueries({ queryKey: ['suppliers-list'] })
     },
   })
 

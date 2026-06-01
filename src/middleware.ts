@@ -28,9 +28,17 @@ export async function middleware(request: NextRequest) {
   // Allow authenticated user to stay on reset-password to set new password
   if (pathname === '/reset-password') return supabaseResponse
 
-  // ADMIN-only routes — redirect others to dashboard
+  // ADMIN-only routes
   if (pathname.startsWith('/users') && userData.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // ADMIN/OWNER-only routes — CASHIER and STORE_KEEPER redirected to their home
+  const ownerAdminOnly = ['/dashboard', '/reports']
+  const isRestricted = ownerAdminOnly.some(p => pathname === p || pathname.startsWith(p + '/'))
+  if (isRestricted && !['ADMIN', 'OWNER'].includes(userData.role)) {
+    const fallback = userData.role === 'CASHIER' ? '/sales/pos' : '/purchases'
+    return NextResponse.redirect(new URL(fallback, request.url))
   }
 
   // Authenticated user visiting /login — redirect by role

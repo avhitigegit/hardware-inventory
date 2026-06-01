@@ -69,6 +69,17 @@ export async function getProductById(id: number): Promise<ActionResult<any>> {
   return { data, error: null }
 }
 
+export async function getAllProducts(): Promise<ActionResult<any[]>> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, categories(name), suppliers(name)')
+    .eq('is_active', true)
+    .order('name')
+  if (error) return { data: null, error: error.message }
+  return { data: data ?? [], error: null }
+}
+
 export async function getProductByBarcode(barcode: string): Promise<ActionResult<any>> {
   const supabase = await createClient()
 

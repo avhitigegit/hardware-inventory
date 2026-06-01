@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getCustomerById, getCustomerSales, getCustomerPayments,
-  updateCustomer, recordCustomerPayment,
+  updateCustomer, deleteCustomer, recordCustomerPayment,
 } from '@/actions/customers.actions'
 import { customerSchema, customerPaymentSchema, type CustomerInput, type CustomerPaymentInput } from '@/lib/validations/customer.schema'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
@@ -30,6 +30,7 @@ export default function CustomerDetailPage() {
 
   const [activeTab, setActiveTab] = useState<'sales' | 'payments'>('sales')
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ['customer', id],
@@ -60,6 +61,9 @@ export default function CustomerDetailPage() {
 
   const infoForm = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: '', phone: '', email: '', address: '', credit_limit: 0,
+    },
     values: customer ? {
       name: customer.name,
       phone: customer.phone ?? '',
@@ -81,6 +85,7 @@ export default function CustomerDetailPage() {
       toast.success('Customer updated.')
       queryClient.invalidateQueries({ queryKey: ['customer', id] })
       queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['customers-list'] })
     },
   })
 
@@ -96,7 +101,17 @@ export default function CustomerDetailPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteCustomer(id),
+    onSuccess: (result) => {
+      if (result.error) { toast.error(result.error); setDeleteDialogOpen(false); return }
+      toast.success('Customer deleted.')
+      router.push('/customers')
+    },
+  })
+
   const canEdit = user?.role && ['ADMIN', 'OWNER', 'CASHIER'].includes(user.role)
+  const canDelete = user?.role && ['ADMIN', 'OWNER'].includes(user.role)
 
   if (isLoading) return (
     <div className="space-y-4">
@@ -114,11 +129,16 @@ export default function CustomerDetailPage() {
           <button onClick={() => router.push('/customers')} className="text-sm text-blue-600 hover:underline mb-1 block">← Back to Customers</button>
           <h1 className="text-2xl font-bold text-gray-800">{customer.name}</h1>
         </div>
-        {customer.credit_balance > 0 && canEdit && (
-          <Button variant="outline" onClick={() => { paymentForm.reset({ amount: 0, notes: '' }); setPaymentDialogOpen(true) }}>
-            Record Payment
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {customer.credit_balance > 0 && canEdit && (
+            <Button variant="outline" onClick={() => { paymentForm.reset({ amount: 0, notes: '' }); setPaymentDialogOpen(true) }}>
+              Record Payment
+            </Button>
+          )}
+          {canDelete && (
+            <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)}>Delete</Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -245,6 +265,24 @@ export default function CustomerDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirm Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Delete Customer</DialogTitle></DialogHeader>
+          <p className="text-sm text-gray-600 pt-2">
+            Delete <strong>{customer.name}</strong>? This cannot be undone.
+            <br />
+            <span className="text-xs text-gray-400 mt-1 block">Blocked if this customer has any sales history.</span>
+          </p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate()}>
+              {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
         <DialogContent className="max-w-sm">

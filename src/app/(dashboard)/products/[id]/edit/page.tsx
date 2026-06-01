@@ -48,6 +48,19 @@ export default function EditProductPage() {
 
   const form = useForm<ProductInput>({
     resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: '',
+      sku: '',
+      barcode: '',
+      description: '',
+      category_id: undefined,
+      supplier_id: null,
+      unit: 'PCS',
+      buying_price: 0,
+      selling_price: 0,
+      reorder_level: 5,
+      is_active: true,
+    },
     values: product ? {
       name: product.name,
       sku: product.sku,

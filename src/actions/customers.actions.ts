@@ -115,6 +115,20 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
   return { data: null, error: null }
 }
 
+export async function deleteCustomer(id: number): Promise<ActionResult> {
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from('sales')
+    .select('id', { count: 'exact', head: true })
+    .eq('customer_id', id)
+  if ((count ?? 0) > 0) {
+    return { data: null, error: 'Cannot delete a customer with sales history. Remove their credit balance or deactivate instead.' }
+  }
+  const { error } = await supabase.from('customers').delete().eq('id', id)
+  if (error) return { data: null, error: error.message }
+  return { data: null, error: null }
+}
+
 export async function recordCustomerPayment(
   customerId: number,
   input: CustomerPaymentInput

@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { getProductByBarcode, getProducts } from '@/actions/products.actions'
+import { getProductByBarcode, getAllProducts } from '@/actions/products.actions'
 import { getCustomers } from '@/actions/customers.actions'
 import { createSale, getSaleById } from '@/actions/sales.actions'
+import { useUser } from '@/hooks/useUser'
 import { formatCurrency, zeroPad } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,8 @@ type CompletedSale = {
 }
 
 export default function PosPage() {
+  const { user } = useUser()
+  const canEditPrice = user?.role && ['ADMIN', 'OWNER'].includes(user.role)
   const [cart, setCart] = useState<CartItem[]>([])
   const [barcodeInput, setBarcodeInput] = useState('')
   const [productSearch, setProductSearch] = useState('')
@@ -56,11 +59,10 @@ export default function PosPage() {
     queryFn: async () => { const r = await getCustomers(); return r.data ?? [] },
   })
 
-  const { data: productsData } = useQuery({
-    queryKey: ['products-pos'],
-    queryFn: async () => { const r = await getProducts({ page: 1 }); return r.data },
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ['products-all'],
+    queryFn: async () => { const r = await getAllProducts(); return r.data ?? [] },
   })
-  const allProducts = productsData?.products ?? []
 
   const filteredProducts = productSearch.length >= 2
     ? allProducts.filter((p: any) =>
@@ -251,6 +253,7 @@ export default function PosPage() {
                       <Input
                         type="number" step="0.01" min="0" className="w-20 text-right ml-auto"
                         value={item.unit_price}
+                        disabled={!canEditPrice}
                         onChange={(e) => updateCartPrice(item.product_id, parseFloat(e.target.value) || 0)}
                       />
                     </td>

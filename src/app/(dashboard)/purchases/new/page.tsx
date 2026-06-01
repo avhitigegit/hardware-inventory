@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getSuppliers } from '@/actions/suppliers.actions'
-import { getProducts } from '@/actions/products.actions'
+import { getAllProducts } from '@/actions/products.actions'
 import { createPurchase } from '@/actions/purchases.actions'
 import { formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -36,14 +36,10 @@ export default function NewPurchasePage() {
     queryFn: async () => { const r = await getSuppliers(); return r.data ?? [] },
   })
 
-  const { data: productsData } = useQuery({
-    queryKey: ['products', '', undefined, false, 1],
-    queryFn: async () => {
-      const r = await getProducts({ page: 1 })
-      return r.data
-    },
+  const { data: allProducts = [] } = useQuery({
+    queryKey: ['products-all'],
+    queryFn: async () => { const r = await getAllProducts(); return r.data ?? [] },
   })
-  const allProducts = productsData?.products ?? []
 
   const addItem = () => {
     setItems(prev => [...prev, { product_id: 0, product_name: '', unit: '', buying_price: 0, quantity: 1, unit_price: 0 }])
