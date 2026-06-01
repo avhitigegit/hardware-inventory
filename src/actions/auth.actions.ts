@@ -23,13 +23,14 @@ export async function signIn(
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { data: userData } = await admin
+  const { data: userData, error: userError } = await admin
     .from('users')
     .select('role, is_active')
     .eq('id', data.user.id)
     .single()
 
-  if (!userData) {
+  if (userError || !userData) {
+    console.error('[signIn] users query failed:', userError?.message, userError?.code, '| key prefix:', process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 12))
     await supabase.auth.signOut()
     return { error: 'Invalid email or password' }
   }
