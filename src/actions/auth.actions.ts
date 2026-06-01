@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 
 export async function signIn(
@@ -15,7 +16,14 @@ export async function signIn(
     return { error: 'Invalid email or password' }
   }
 
-  const { data: userData } = await supabase
+  // Use service role client to bypass RLS — the session cookie is not yet
+  // available to auth.uid() within the same Server Action execution context.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: userData } = await admin
     .from('users')
     .select('role, is_active')
     .eq('id', data.user.id)
