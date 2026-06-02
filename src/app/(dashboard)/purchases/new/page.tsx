@@ -188,9 +188,9 @@ export default function NewPurchasePage() {
                   </div>
                   <div className="col-span-2">
                     <Input
-                      type="number" min="1" className="text-right"
+                      type="number" min="0.001" step="0.001" className="text-right"
                       value={item.quantity}
-                      onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} />
+                      onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className="col-span-2">
                     <Input

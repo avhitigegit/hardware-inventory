@@ -64,6 +64,10 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
     return { data: null, error: 'Customer is required for credit sales.' }
   }
 
+  if (input.payment_type === 'SPLIT' && !input.customer_id) {
+    return { data: null, error: 'Customer is required for split payment sales.' }
+  }
+
   // Stock check
   for (const item of input.items) {
     const { data: product } = await supabase
@@ -82,10 +86,20 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
     }
   }
 
-  const totalAmount = input.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
+  const subtotal = input.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0)
+  const discountAmount = input.discount_amount ?? 0
+  const totalAmount = Math.max(0, subtotal - discountAmount)
+
+  if (discountAmount > subtotal) {
+    return { data: null, error: 'Discount cannot exceed the subtotal.' }
+  }
 
   // Credit limit check
-  if (input.payment_type === 'CREDIT' && input.customer_id) {
+  const creditPortion =
+    input.payment_type === 'CREDIT' ? totalAmount :
+    input.payment_type === 'SPLIT' ? Math.max(0, totalAmount - (input.cash_amount ?? 0)) : 0
+
+  if (creditPortion > 0 && input.customer_id) {
     const { data: customer } = await supabase
       .from('customers')
       .select('credit_balance, credit_limit, name')
@@ -93,7 +107,7 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
       .single()
 
     if (customer && customer.credit_limit > 0) {
-      if (customer.credit_balance + totalAmount > customer.credit_limit) {
+      if (customer.credit_balance + creditPortion > customer.credit_limit) {
         const available = customer.credit_limit - customer.credit_balance
         return {
           data: null,
@@ -103,7 +117,7 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
     }
   }
 
-  // Cash payment check
+  // Cash payment validation
   if (input.payment_type === 'CASH') {
     const received = input.amount_received ?? 0
     if (received < totalAmount) {
@@ -111,16 +125,34 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
     }
   }
 
+  if (input.payment_type === 'SPLIT') {
+    const cashPaid = input.cash_amount ?? 0
+    if (cashPaid <= 0) return { data: null, error: 'Cash amount must be greater than 0 for split payment.' }
+    if (cashPaid >= totalAmount) return { data: null, error: 'Cash amount must be less than total for split payment. Use CASH instead.' }
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
-  const paidAmount = input.payment_type === 'CASH' ? totalAmount : 0
-  const balanceAmount = input.payment_type === 'CREDIT' ? totalAmount : 0
+  let paidAmount = 0
+  let balanceAmount = 0
+
+  if (input.payment_type === 'CASH') {
+    paidAmount = totalAmount
+    balanceAmount = 0
+  } else if (input.payment_type === 'CREDIT') {
+    paidAmount = 0
+    balanceAmount = totalAmount
+  } else {
+    paidAmount = input.cash_amount ?? 0
+    balanceAmount = Math.max(0, totalAmount - paidAmount)
+  }
 
   const { data: sale, error: saleError } = await supabase
     .from('sales')
     .insert({
       customer_id: input.customer_id ?? null,
       total_amount: totalAmount,
+      discount_amount: discountAmount,
       paid_amount: paidAmount,
       balance_amount: balanceAmount,
       payment_type: input.payment_type,

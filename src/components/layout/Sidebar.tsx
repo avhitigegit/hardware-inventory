@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { label: 'Customers', href: '/customers', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
   { label: 'Purchases / GRN', href: '/purchases', roles: ['ADMIN', 'OWNER', 'STORE_KEEPER'] },
   { label: 'Sales / POS', href: '/sales', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
+  { label: 'Returns', href: '/returns', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
   { label: 'Stock Adjustments', href: '/stock-adjustments', roles: ['ADMIN', 'OWNER', 'STORE_KEEPER'] },
   {
     label: 'Reports',
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
       { label: 'Monthly Report', href: '/reports/monthly' },
       { label: 'Top Products', href: '/reports/top-products' },
       { label: 'Low Stock', href: '/reports/low-stock' },
+      { label: 'Cash Summary', href: '/reports/cash-summary' },
     ],
   },
   { label: 'Users', href: '/users', roles: ['ADMIN'] },

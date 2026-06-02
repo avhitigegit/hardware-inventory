@@ -187,8 +187,8 @@ export default function StockAdjustmentsPage() {
                     )}
                   </FormLabel>
                   <FormControl>
-                    <Input type="number" min="1"
-                      {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 1)} />
+                    <Input type="number" min="0.001" step="0.001"
+                      {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
                   </FormControl>
                   {subtractExceeds && (
                     <p className="text-sm text-red-500">

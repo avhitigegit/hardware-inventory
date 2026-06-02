@@ -100,6 +100,18 @@ export default function SaleReceipt({ sale }: SaleReceiptProps) {
 
         {/* Totals */}
         <View style={styles.totalSection}>
+          {Number(sale.discount_amount ?? 0) > 0 && (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Subtotal</Text>
+                <Text style={styles.totalValue}>Rs. {(Number(sale.total_amount) + Number(sale.discount_amount)).toFixed(2)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={[styles.totalLabel, { color: '#16a34a' }]}>Discount</Text>
+                <Text style={[styles.totalValue, { color: '#16a34a' }]}>− Rs. {Number(sale.discount_amount).toFixed(2)}</Text>
+              </View>
+            </>
+          )}
           <View style={styles.grandTotal}>
             <Text style={styles.grandTotalLabel}>Total Amount</Text>
             <Text style={styles.grandTotalValue}>Rs. {Number(sale.total_amount).toFixed(2)}</Text>
@@ -124,6 +136,22 @@ export default function SaleReceipt({ sale }: SaleReceiptProps) {
 
           {sale.payment_type === 'CREDIT' && (
             <Text style={styles.creditLabel}>On Credit — {sale.customers?.name ?? 'Customer'}</Text>
+          )}
+
+          {sale.payment_type === 'SPLIT' && (
+            <>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Cash Paid</Text>
+                <Text style={styles.totalValue}>Rs. {Number(sale.paid_amount ?? 0).toFixed(2)}</Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={[styles.totalLabel, { color: '#d97706' }]}>On Credit</Text>
+                <Text style={[styles.totalValue, { color: '#d97706' }]}>Rs. {Number(sale.balance_amount ?? 0).toFixed(2)}</Text>
+              </View>
+              {sale.customers?.name && (
+                <Text style={styles.creditLabel}>Credit: {sale.customers.name}</Text>
+              )}
+            </>
           )}
         </View>
 

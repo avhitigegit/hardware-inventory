@@ -82,10 +82,31 @@ export type Sale = {
   total_amount: number
   paid_amount: number
   balance_amount: number
-  payment_type: 'CASH' | 'CREDIT'
+  discount_amount: number
+  payment_type: 'CASH' | 'CREDIT' | 'SPLIT'
   notes: string | null
   created_by: string | null
   created_at: string
+}
+
+export type Return = {
+  id: number
+  sale_id: number | null
+  customer_id: number | null
+  total_return_amount: number
+  return_method: 'CASH_REFUND' | 'CREDIT_ADJUSTMENT'
+  notes: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export type ReturnItem = {
+  id: number
+  return_id: number
+  product_id: number
+  quantity: number
+  unit_price: number
+  total_price: number
 }
 
 export type SaleItem = {

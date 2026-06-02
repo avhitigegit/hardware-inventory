@@ -33,3 +33,7 @@ export function formatDateTime(dateString: string): string {
 export function zeroPad(num: number, length: number = 6): string {
   return String(num).padStart(length, '0')
 }
+
+export function formatQty(qty: number): string {
+  return Number.isInteger(qty) ? String(qty) : qty.toFixed(3).replace(/\.?0+$/, '')
+}

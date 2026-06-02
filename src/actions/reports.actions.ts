@@ -238,6 +238,69 @@ export async function getLowStockProducts(limit?: number): Promise<ActionResult<
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// Cash Summary (End-of-Day)
+// ──────────────────────────────────────────────────────────────────────────
+
+export type CashSummary = {
+  date: string
+  cash_sales_count: number
+  cash_total: number
+  credit_sales_count: number
+  credit_total: number
+  split_sales_count: number
+  split_cash_total: number
+  split_credit_total: number
+  returns_count: number
+  returns_cash_refund: number
+  net_cash_in_drawer: number
+}
+
+export async function getCashSummary(colomboDate: string): Promise<ActionResult<CashSummary>> {
+  const supabase = await createClient()
+  const { start, end } = dayStartEndUTC(colomboDate)
+
+  const { data: sales, error: e1 } = await supabase
+    .from('sales')
+    .select('total_amount, paid_amount, balance_amount, payment_type')
+    .gte('created_at', start)
+    .lte('created_at', end)
+  if (e1) return { data: null, error: e1.message }
+
+  const { data: returns, error: e2 } = await supabase
+    .from('returns')
+    .select('total_return_amount, return_method')
+    .gte('created_at', start)
+    .lte('created_at', end)
+  if (e2) return { data: null, error: e2.message }
+
+  const cashSales    = (sales ?? []).filter(s => s.payment_type === 'CASH')
+  const creditSales  = (sales ?? []).filter(s => s.payment_type === 'CREDIT')
+  const splitSales   = (sales ?? []).filter(s => s.payment_type === 'SPLIT')
+  const cashRefunds  = (returns ?? []).filter(r => r.return_method === 'CASH_REFUND')
+
+  const cash_total        = cashSales.reduce((s, r) => s + r.total_amount, 0)
+  const split_cash_total  = splitSales.reduce((s, r) => s + (r.paid_amount ?? 0), 0)
+  const returns_cash_refund = cashRefunds.reduce((s, r) => s + r.total_return_amount, 0)
+
+  return {
+    data: {
+      date: colomboDate,
+      cash_sales_count: cashSales.length,
+      cash_total,
+      credit_sales_count: creditSales.length,
+      credit_total: creditSales.reduce((s, r) => s + r.total_amount, 0),
+      split_sales_count: splitSales.length,
+      split_cash_total,
+      split_credit_total: splitSales.reduce((s, r) => s + (r.balance_amount ?? 0), 0),
+      returns_count: (returns ?? []).length,
+      returns_cash_refund,
+      net_cash_in_drawer: cash_total + split_cash_total - returns_cash_refund,
+    },
+    error: null,
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // Top Selling Products
 // ──────────────────────────────────────────────────────────────────────────
 

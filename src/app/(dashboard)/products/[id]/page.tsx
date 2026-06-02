@@ -3,13 +3,42 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { getProductById } from '@/actions/products.actions'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatQty } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useUser } from '@/hooks/useUser'
 import { cn } from '@/lib/utils'
+
+function printLabel(product: any) {
+  const shopName = process.env.NEXT_PUBLIC_SHOP_NAME ?? 'Hardware Shop'
+  const barcodeValue = product.barcode ?? product.sku
+  const win = window.open('', '_blank', 'width=400,height=300')
+  if (!win) return
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<style>
+  @page { margin: 0; size: 62mm 29mm; }
+  body { margin: 6px 8px; font-family: Arial, sans-serif; }
+  .shop { font-size: 8px; color: #555; }
+  .name { font-size: 11px; font-weight: bold; margin: 2px 0; line-height: 1.2; }
+  .sku  { font-size: 9px; color: #444; letter-spacing: 0.5px; }
+  .price{ font-size: 13px; font-weight: bold; margin-top: 3px; }
+  .barcode { font-size: 10px; font-family: monospace; letter-spacing: 2px; border: 1px solid #ccc; padding: 2px 6px; display: inline-block; margin-top: 3px; }
+</style>
+</head>
+<body onload="window.print();window.close()">
+  <div class="shop">${shopName}</div>
+  <div class="name">${product.name}</div>
+  <div class="sku">SKU: ${product.sku}</div>
+  <div class="price">Rs. ${Number(product.selling_price).toFixed(2)}</div>
+  <div class="barcode">${barcodeValue}</div>
+</body>
+</html>`)
+  win.document.close()
+}
 
 export default function ProductDetailPage() {
   const params = useParams()
@@ -48,10 +77,11 @@ export default function ProductDetailPage() {
           <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
           <p className="text-sm text-gray-500 font-mono">{product.sku}</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex gap-2 items-center flex-wrap">
           <Badge variant={product.is_active ? 'default' : 'secondary'}>
             {product.is_active ? 'Active' : 'Inactive'}
           </Badge>
+          <Button variant="outline" onClick={() => printLabel(product)}>Print Label</Button>
           {canWrite && (
             <Button onClick={() => router.push(`/products/${id}/edit`)}>Edit Product</Button>
           )}
@@ -69,7 +99,7 @@ export default function ProductDetailPage() {
           <CardHeader className="pb-2"><CardTitle className="text-sm text-gray-500">Stock Qty</CardTitle></CardHeader>
           <CardContent>
             <p className={cn('text-2xl font-bold', isZero ? 'text-red-600' : isLow ? 'text-amber-600' : 'text-gray-800')}>
-              {product.stock_quantity}
+              {formatQty(product.stock_quantity)}
             </p>
             <p className="text-xs text-gray-400">{product.unit}</p>
           </CardContent>
