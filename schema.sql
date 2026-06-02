@@ -1,10 +1,10 @@
 -- ============================================================
--- Lahiru Hardware — Database Schema
--- Run this FIRST on a fresh Supabase project (before seed.sql)
+-- Hardware Inventory — Complete Database Schema
+-- Run this ONCE on a fresh Supabase project (before seed.sql)
 -- ============================================================
 -- ORDER TO RUN:
---   1. This file  (schema.sql)   — tables, triggers, RLS
---   2. seed.sql                  — sample data (UAT only)
+--   1. This file  (schema.sql)  — tables, triggers, grants, RLS
+--   2. seed.sql                 — sample data (UAT only, never PROD)
 -- ============================================================
 
 
@@ -62,8 +62,8 @@ CREATE TABLE products (
   unit             TEXT NOT NULL DEFAULT 'PCS',
   buying_price     NUMERIC(12,2) NOT NULL,
   selling_price    NUMERIC(12,2) NOT NULL,
-  stock_quantity   INTEGER NOT NULL DEFAULT 0,
-  reorder_level    INTEGER NOT NULL DEFAULT 5,
+  stock_quantity   NUMERIC(10,3) NOT NULL DEFAULT 0,
+  reorder_level    NUMERIC(10,3) NOT NULL DEFAULT 5,
   image_url        TEXT,
   is_active        BOOLEAN NOT NULL DEFAULT true,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -85,29 +85,30 @@ CREATE TABLE purchase_items (
   id           BIGSERIAL PRIMARY KEY,
   purchase_id  BIGINT NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
   product_id   BIGINT NOT NULL REFERENCES products(id),
-  quantity     INTEGER NOT NULL,
+  quantity     NUMERIC(10,3) NOT NULL,
   unit_price   NUMERIC(12,2) NOT NULL,
   total_price  NUMERIC(12,2) NOT NULL
 );
 
--- POS sales
+-- POS sales (payment_type includes SPLIT for partial cash + partial credit)
 CREATE TABLE sales (
-  id             BIGSERIAL PRIMARY KEY,
-  customer_id    BIGINT REFERENCES customers(id),
-  total_amount   NUMERIC(12,2) NOT NULL,
-  paid_amount    NUMERIC(12,2) NOT NULL DEFAULT 0,
-  balance_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
-  payment_type   TEXT NOT NULL CHECK (payment_type IN ('CASH','CREDIT')),
-  notes          TEXT,
-  created_by     UUID REFERENCES users(id),
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id              BIGSERIAL PRIMARY KEY,
+  customer_id     BIGINT REFERENCES customers(id),
+  total_amount    NUMERIC(12,2) NOT NULL,
+  discount_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  paid_amount     NUMERIC(12,2) NOT NULL DEFAULT 0,
+  balance_amount  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  payment_type    TEXT NOT NULL CHECK (payment_type IN ('CASH','CREDIT','SPLIT')),
+  notes           TEXT,
+  created_by      UUID REFERENCES users(id),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE sale_items (
   id          BIGSERIAL PRIMARY KEY,
   sale_id     BIGINT NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
   product_id  BIGINT NOT NULL REFERENCES products(id),
-  quantity    INTEGER NOT NULL,
+  quantity    NUMERIC(10,3) NOT NULL,
   unit_price  NUMERIC(12,2) NOT NULL,
   total_price NUMERIC(12,2) NOT NULL
 );
@@ -116,7 +117,7 @@ CREATE TABLE stock_adjustments (
   id              BIGSERIAL PRIMARY KEY,
   product_id      BIGINT NOT NULL REFERENCES products(id),
   adjustment_type TEXT NOT NULL CHECK (adjustment_type IN ('ADD','SUBTRACT')),
-  quantity        INTEGER NOT NULL,
+  quantity        NUMERIC(10,3) NOT NULL,
   reason          TEXT NOT NULL,
   created_by      UUID REFERENCES users(id),
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -141,10 +142,30 @@ CREATE TABLE supplier_payments (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Returns — customer returns items, stock is restored
+CREATE TABLE returns (
+  id                  BIGSERIAL PRIMARY KEY,
+  sale_id             BIGINT REFERENCES sales(id),
+  customer_id         BIGINT REFERENCES customers(id),
+  total_return_amount NUMERIC(12,2) NOT NULL,
+  return_method       TEXT NOT NULL CHECK (return_method IN ('CASH_REFUND','CREDIT_ADJUSTMENT')),
+  notes               TEXT,
+  created_by          UUID REFERENCES users(id),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE return_items (
+  id          BIGSERIAL PRIMARY KEY,
+  return_id   BIGINT NOT NULL REFERENCES returns(id) ON DELETE CASCADE,
+  product_id  BIGINT NOT NULL REFERENCES products(id),
+  quantity    NUMERIC(10,3) NOT NULL,
+  unit_price  NUMERIC(12,2) NOT NULL,
+  total_price NUMERIC(12,2) NOT NULL
+);
+
 
 -- ============================================================
 -- PART 2 — TRIGGER FUNCTIONS
--- These run automatically when data is inserted
 -- ============================================================
 
 -- Fires when a purchase_item is inserted → adds stock, tracks supplier credit
@@ -178,11 +199,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Fires when a sale is inserted → adds to customer credit balance if CREDIT sale
+-- Fires when a sale is inserted → updates customer credit for CREDIT and SPLIT sales
 CREATE OR REPLACE FUNCTION update_customer_credit_on_sale()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.payment_type = 'CREDIT' AND NEW.customer_id IS NOT NULL THEN
+  IF NEW.payment_type IN ('CREDIT','SPLIT')
+     AND NEW.customer_id IS NOT NULL
+     AND NEW.balance_amount > 0 THEN
     UPDATE customers
       SET credit_balance = credit_balance + NEW.balance_amount
       WHERE id = NEW.customer_id;
@@ -210,9 +233,20 @@ CREATE TRIGGER trigger_customer_credit
 
 
 -- ============================================================
--- PART 4 — ROW LEVEL SECURITY (RLS)
--- Enable RLS on every table, then add policies.
--- Without policies, an RLS-enabled table blocks ALL access.
+-- PART 4 — GRANTS
+-- Required because "Automatically expose new tables" is OFF.
+-- GRANT unlocks the door; RLS policies control which rows.
+-- ============================================================
+
+GRANT ALL ON ALL TABLES    IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES    IN SCHEMA public TO authenticated;
+GRANT USAGE, SELECT                  ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+
+-- ============================================================
+-- PART 5 — ROW LEVEL SECURITY (RLS)
 -- ============================================================
 
 ALTER TABLE users              ENABLE ROW LEVEL SECURITY;
@@ -222,14 +256,15 @@ ALTER TABLE customers          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE purchases          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE purchase_items     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sales               ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sale_items          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sales              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sale_items         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_adjustments  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customer_payments  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE supplier_payments  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE returns            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE return_items       ENABLE ROW LEVEL SECURITY;
 
--- Helper function — reads the role of the currently logged-in user
--- SECURITY DEFINER means it runs with elevated rights (bypasses RLS itself)
+-- Helper: get current user's role (SECURITY DEFINER bypasses RLS for the inner query)
 CREATE OR REPLACE FUNCTION get_user_role()
 RETURNS TEXT AS $$
   SELECT role FROM users WHERE id = auth.uid();
@@ -237,13 +272,15 @@ $$ LANGUAGE SQL STABLE SECURITY DEFINER;
 
 
 -- ============================================================
--- PART 5 — RLS POLICIES
+-- PART 6 — RLS POLICIES
+-- auth.role() = 'authenticated' is used for SELECT policies
+-- because it is more reliable than auth.uid() with the new
+-- Supabase key format (sb_publishable_ / sb_secret_).
 -- ============================================================
 
 -- ── USERS ────────────────────────────────────────────────────
--- Any logged-in user can read their own row (needed for session checks)
 CREATE POLICY "users_select_own" ON users
-  FOR SELECT USING (id = auth.uid() OR get_user_role() = 'ADMIN');
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "users_insert_admin" ON users
   FOR INSERT WITH CHECK (get_user_role() = 'ADMIN');
@@ -254,7 +291,7 @@ CREATE POLICY "users_update_admin" ON users
 
 -- ── CATEGORIES ───────────────────────────────────────────────
 CREATE POLICY "categories_select_auth" ON categories
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "categories_insert_admin_owner" ON categories
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER'));
@@ -268,7 +305,7 @@ CREATE POLICY "categories_delete_admin_owner" ON categories
 
 -- ── SUPPLIERS ────────────────────────────────────────────────
 CREATE POLICY "suppliers_select_auth" ON suppliers
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "suppliers_insert_admin_owner" ON suppliers
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER'));
@@ -282,7 +319,7 @@ CREATE POLICY "suppliers_delete_admin" ON suppliers
 
 -- ── CUSTOMERS ────────────────────────────────────────────────
 CREATE POLICY "customers_select_auth" ON customers
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "customers_insert_admin_owner_cashier" ON customers
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
@@ -296,7 +333,7 @@ CREATE POLICY "customers_delete_admin_owner" ON customers
 
 -- ── PRODUCTS ─────────────────────────────────────────────────
 CREATE POLICY "products_select_auth" ON products
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "products_insert_admin_owner_sk" ON products
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','STORE_KEEPER'));
@@ -310,7 +347,7 @@ CREATE POLICY "products_delete_admin_owner" ON products
 
 -- ── PURCHASES (GRN) ──────────────────────────────────────────
 CREATE POLICY "purchases_select_auth" ON purchases
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "purchases_insert_admin_owner_sk" ON purchases
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','STORE_KEEPER'));
@@ -318,7 +355,7 @@ CREATE POLICY "purchases_insert_admin_owner_sk" ON purchases
 
 -- ── PURCHASE ITEMS ───────────────────────────────────────────
 CREATE POLICY "purchase_items_select_auth" ON purchase_items
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "purchase_items_insert_admin_owner_sk" ON purchase_items
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','STORE_KEEPER'));
@@ -326,7 +363,7 @@ CREATE POLICY "purchase_items_insert_admin_owner_sk" ON purchase_items
 
 -- ── SALES (POS) ──────────────────────────────────────────────
 CREATE POLICY "sales_select_auth" ON sales
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "sales_insert_admin_owner_cashier" ON sales
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
@@ -334,7 +371,7 @@ CREATE POLICY "sales_insert_admin_owner_cashier" ON sales
 
 -- ── SALE ITEMS ───────────────────────────────────────────────
 CREATE POLICY "sale_items_select_auth" ON sale_items
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "sale_items_insert_admin_owner_cashier" ON sale_items
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
@@ -342,7 +379,7 @@ CREATE POLICY "sale_items_insert_admin_owner_cashier" ON sale_items
 
 -- ── STOCK ADJUSTMENTS ────────────────────────────────────────
 CREATE POLICY "stock_adj_select_auth" ON stock_adjustments
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "stock_adj_insert_admin_owner_sk" ON stock_adjustments
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','STORE_KEEPER'));
@@ -350,7 +387,7 @@ CREATE POLICY "stock_adj_insert_admin_owner_sk" ON stock_adjustments
 
 -- ── CUSTOMER PAYMENTS ────────────────────────────────────────
 CREATE POLICY "cust_payments_select_auth" ON customer_payments
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "cust_payments_insert_admin_owner_cashier" ON customer_payments
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
@@ -358,14 +395,30 @@ CREATE POLICY "cust_payments_insert_admin_owner_cashier" ON customer_payments
 
 -- ── SUPPLIER PAYMENTS ────────────────────────────────────────
 CREATE POLICY "sup_payments_select_auth" ON supplier_payments
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "sup_payments_insert_admin_owner" ON supplier_payments
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER'));
 
 
+-- ── RETURNS ──────────────────────────────────────────────────
+CREATE POLICY "returns_select_auth" ON returns
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "returns_insert_roles" ON returns
+  FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
+
+
+-- ── RETURN ITEMS ─────────────────────────────────────────────
+CREATE POLICY "return_items_select_auth" ON return_items
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "return_items_insert_roles" ON return_items
+  FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
+
+
 -- ============================================================
 -- DONE — schema.sql complete
--- Next step: create your admin user in Supabase Auth dashboard,
--- then run seed.sql to load sample data.
+-- Next: create admin user in Supabase Auth dashboard, then
+-- insert into users table, then run seed.sql (UAT only).
 -- ============================================================
