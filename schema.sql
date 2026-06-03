@@ -1,11 +1,40 @@
 -- ============================================================
 -- Hardware Inventory — Complete Database Schema
--- Run this ONCE on a fresh Supabase project (before seed.sql)
+-- Safe to run on FRESH or EXISTING databases.
+-- Drops everything first, then recreates from scratch.
 -- ============================================================
 -- ORDER TO RUN:
 --   1. This file  (schema.sql)  — tables, triggers, RLS, storage
 --   2. seed.sql                 — sample data (UAT only, never PROD)
 -- ============================================================
+
+
+-- ============================================================
+-- PART 0 — DROP EVERYTHING (safe re-run / clean reset)
+-- Tables dropped in reverse-dependency order; CASCADE removes
+-- dependent triggers, policies, and foreign-key constraints.
+-- ============================================================
+
+DROP TABLE IF EXISTS return_items      CASCADE;
+DROP TABLE IF EXISTS returns           CASCADE;
+DROP TABLE IF EXISTS audit_logs        CASCADE;
+DROP TABLE IF EXISTS supplier_payments CASCADE;
+DROP TABLE IF EXISTS customer_payments CASCADE;
+DROP TABLE IF EXISTS stock_adjustments CASCADE;
+DROP TABLE IF EXISTS sale_items        CASCADE;
+DROP TABLE IF EXISTS sales             CASCADE;
+DROP TABLE IF EXISTS purchase_items    CASCADE;
+DROP TABLE IF EXISTS purchases         CASCADE;
+DROP TABLE IF EXISTS products          CASCADE;
+DROP TABLE IF EXISTS customers         CASCADE;
+DROP TABLE IF EXISTS suppliers         CASCADE;
+DROP TABLE IF EXISTS categories        CASCADE;
+DROP TABLE IF EXISTS users             CASCADE;
+
+DROP FUNCTION IF EXISTS get_user_role()                   CASCADE;
+DROP FUNCTION IF EXISTS increment_stock_on_purchase()     CASCADE;
+DROP FUNCTION IF EXISTS decrement_stock_on_sale()         CASCADE;
+DROP FUNCTION IF EXISTS update_customer_credit_on_sale()  CASCADE;
 
 
 -- ============================================================
@@ -19,6 +48,7 @@ CREATE TABLE users (
   email       TEXT NOT NULL UNIQUE,
   role        TEXT NOT NULL CHECK (role IN ('ADMIN','OWNER','CASHIER','STORE_KEEPER')),
   is_active   BOOLEAN NOT NULL DEFAULT true,
+  status      TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','ACTIVE','INACTIVE','RESIGNED','TERMINATED','BLOCKED')),
   birthday    DATE,
   address     TEXT,
   id_number   TEXT,
@@ -475,33 +505,14 @@ CREATE POLICY "avatars_delete_auth" ON storage.objects
 
 
 -- ============================================================
--- MIGRATION — run this on an existing UAT/PROD database
--- (schema.sql already includes everything above for fresh installs)
--- ============================================================
---
--- ALTER TABLE to add audit_logs (if upgrading existing DB):
---
--- CREATE TABLE IF NOT EXISTS audit_logs (
---   id          BIGSERIAL PRIMARY KEY,
---   user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
---   user_name   TEXT,
---   action      TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
---   entity      TEXT NOT NULL,
---   entity_id   TEXT,
---   description TEXT NOT NULL,
---   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
--- );
--- ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
--- GRANT SELECT, INSERT ON audit_logs TO authenticated;
--- GRANT ALL ON audit_logs TO service_role;
--- GRANT USAGE, SELECT ON SEQUENCE audit_logs_id_seq TO authenticated;
--- CREATE POLICY "audit_logs_insert_auth" ON audit_logs
---   FOR INSERT TO authenticated WITH CHECK (true);
--- CREATE POLICY "audit_logs_select_admin_owner" ON audit_logs
---   FOR SELECT USING (get_user_role() IN ('ADMIN','OWNER'));
---
--- ============================================================
 -- DONE — schema.sql complete
--- Next: create admin user in Supabase Auth dashboard, then
--- insert into users table, then run seed.sql (UAT only).
+-- Run this entire file on any database (fresh or existing).
+-- PART 0 drops and recreates everything automatically.
+--
+-- After running:
+--   1. Create the first ADMIN in Supabase Auth dashboard
+--   2. INSERT that user into the users table:
+--        INSERT INTO users (id, full_name, email, role, status, is_active)
+--        VALUES ('<auth-uuid>', 'Admin Name', 'admin@email.com', 'ADMIN', 'ACTIVE', true);
+--   3. Run seed.sql (UAT only, never PROD)
 -- ============================================================

@@ -58,11 +58,22 @@ export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: userData } = await supabase
+  // Use service role to bypass RLS — avoids silent null returns due to policy issues
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: userData, error } = await admin
     .from('users')
     .select('*')
     .eq('id', user.id)
     .single()
+
+  if (error) {
+    console.error('[getCurrentUser] failed:', error.message)
+    return null
+  }
 
   return userData
 }

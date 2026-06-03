@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
@@ -12,8 +13,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Authenticated — fetch role and active status
-  const { data: userData } = await supabase
+  // Use service role to bypass RLS — ensures we always get the user row
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data: userData } = await admin
     .from('users')
     .select('role, is_active')
     .eq('id', user.id)
@@ -31,6 +38,11 @@ export async function middleware(request: NextRequest) {
   // ADMIN-only routes
   if (pathname.startsWith('/users') && userData.role !== 'ADMIN') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // CASHIER cannot access Sales History — POS Terminal only
+  if (pathname === '/sales' && userData.role === 'CASHIER') {
+    return NextResponse.redirect(new URL('/sales/pos', request.url))
   }
 
   // ADMIN/OWNER-only routes — CASHIER and STORE_KEEPER redirected to their home

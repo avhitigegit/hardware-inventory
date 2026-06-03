@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@/hooks/useUser'
 import { signOut } from '@/actions/auth.actions'
-import { updateUserProfile } from '@/actions/users.actions'
+import { updateUserProfile, activateFromPending } from '@/actions/users.actions'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -57,6 +57,7 @@ export default function TopNav({ title }: { title?: string }) {
   const [newPw, setNewPw]             = useState('')
   const [confirmPw, setConfirmPw]     = useState('')
   const [pwLoading, setPwLoading]     = useState(false)
+  const [activated, setActivated]     = useState(false)
   const [pwError, setPwError]         = useState('')
 
   // Profile form state
@@ -125,12 +126,20 @@ export default function TopNav({ title }: { title?: string }) {
     setPwLoading(true)
     const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password: newPw })
+    if (error) { setPwLoading(false); setPwError(error.message); return }
+    // If user was PENDING (first login), activate their account now
+    if (user?.status === 'PENDING') {
+      await activateFromPending()
+      setActivated(true)
+      toast.success('Password set. Your account is now active!')
+    } else {
+      toast.success('Password changed successfully.')
+    }
     setPwLoading(false)
-    if (error) { setPwError(error.message); return }
-    toast.success('Password changed successfully.')
     setPwOpen(false)
     setNewPw('')
     setConfirmPw('')
+    router.refresh()
   }
 
   const initials = user?.full_name
@@ -144,8 +153,24 @@ export default function TopNav({ title }: { title?: string }) {
   const roleLabel  = user?.role ? roleLabels[user.role]   : ''
   const currentAvatar = avatarPreview ?? user?.avatar_url ?? null
 
+  const isPending = !activated && user?.status === 'PENDING'
+
   return (
     <>
+      {/* Pending account banner */}
+      {isPending && (
+        <div className="bg-amber-500 text-white text-sm px-6 py-2 flex items-center justify-between">
+          <span>
+            ⚠ Your account is <strong>pending activation</strong>. Please change your password to activate it.
+          </span>
+          <button
+            onClick={() => { setMenuOpen(false); setPwOpen(true) }}
+            className="ml-4 bg-white text-amber-700 font-semibold text-xs px-3 py-1 rounded-full hover:bg-amber-50 transition-colors"
+          >
+            Change Password Now
+          </button>
+        </div>
+      )}
       <header className="flex items-center justify-between h-14 px-6 border-b bg-white shrink-0">
         {/* Left — page title */}
         <h2 className="text-base font-semibold text-gray-700 hidden sm:block">

@@ -1,10 +1,12 @@
-export type UserRole = 'ADMIN' | 'OWNER' | 'CASHIER' | 'STORE_KEEPER'
+export type UserRole   = 'ADMIN' | 'OWNER' | 'CASHIER' | 'STORE_KEEPER'
+export type UserStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'RESIGNED' | 'TERMINATED' | 'BLOCKED'
 
 export type AppUser = {
   id: string
   full_name: string
   email: string
   role: UserRole
+  status: UserStatus
   is_active: boolean
   created_at: string
   birthday: string | null

@@ -23,7 +23,8 @@ const navItems: NavItem[] = [
   { label: 'Suppliers', href: '/suppliers', roles: ['ADMIN', 'OWNER'] },
   { label: 'Customers', href: '/customers', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
   { label: 'Purchases / GRN', href: '/purchases', roles: ['ADMIN', 'OWNER', 'STORE_KEEPER'] },
-  { label: 'Sales / POS', href: '/sales', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
+  { label: 'Sales / POS', href: '/sales', roles: ['ADMIN', 'OWNER'] },
+  { label: 'POS Terminal', href: '/sales/pos', roles: ['CASHIER'] },
   { label: 'Returns', href: '/returns', roles: ['ADMIN', 'OWNER', 'CASHIER'] },
   { label: 'Stock Adjustments', href: '/stock-adjustments', roles: ['ADMIN', 'OWNER', 'STORE_KEEPER'] },
   {
