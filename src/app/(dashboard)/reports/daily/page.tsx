@@ -8,6 +8,7 @@ import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 const DailyReportPdf = dynamic(() => import('@/components/pdf/DailyReportPdf'), { ssr: false })
 
@@ -16,6 +17,15 @@ function todayColombo() {
     timeZone: 'Asia/Colombo',
     year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date())
+}
+
+function offsetDay(days: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + days)
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Colombo',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d)
 }
 
 function SummaryCard({ title, value, sub }: { title: string; value: string; sub?: string }) {
@@ -28,8 +38,16 @@ function SummaryCard({ title, value, sub }: { title: string; value: string; sub?
   )
 }
 
+const quickDays = [
+  { label: 'Today',     value: () => todayColombo() },
+  { label: 'Yesterday', value: () => offsetDay(-1) },
+  { label: '2 days ago', value: () => offsetDay(-2) },
+  { label: '3 days ago', value: () => offsetDay(-3) },
+]
+
 export default function DailyReportPage() {
-  const [date, setDate] = useState(todayColombo())
+  const [date, setDate]           = useState(todayColombo())
+  const [activeQuick, setQuick]   = useState('Today')
 
   const { data: summary, isLoading } = useQuery({
     queryKey: ['daily-report', date],
@@ -47,17 +65,34 @@ export default function DailyReportPage() {
           <h1 className="text-2xl font-bold text-gray-800">Daily Report</h1>
           <p className="text-sm text-gray-500">Sales summary for a specific day</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-40"
-          />
-          {summary && !isLoading && (
-            <DailyReportPdf date={date} summary={summary} />
-          )}
-        </div>
+        {summary && !isLoading && (
+          <DailyReportPdf date={date} summary={summary} />
+        )}
+      </div>
+
+      {/* Quick day selector */}
+      <div className="flex flex-wrap items-center gap-2">
+        {quickDays.map(q => (
+          <button
+            key={q.label}
+            onClick={() => { setDate(q.value()); setQuick(q.label) }}
+            className={cn(
+              'px-4 py-1.5 rounded-full text-sm font-medium border transition-colors',
+              activeQuick === q.label
+                ? 'bg-gray-800 text-white border-gray-800'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+            )}
+          >
+            {q.label}
+          </button>
+        ))}
+        <span className="text-gray-300 text-lg">|</span>
+        <Input
+          type="date"
+          value={date}
+          onChange={e => { setDate(e.target.value); setQuick('') }}
+          className="w-36 text-sm"
+        />
       </div>
 
       {/* Summary Cards */}

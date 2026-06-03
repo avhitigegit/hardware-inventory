@@ -10,7 +10,6 @@ import { createProduct } from '@/actions/products.actions'
 import { getCategories } from '@/actions/categories.actions'
 import { getSuppliers } from '@/actions/suppliers.actions'
 import { productCreateSchema, PRODUCT_UNITS, type ProductCreateInput } from '@/lib/validations/product.schema'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,8 +18,6 @@ import { Badge } from '@/components/ui/badge'
 
 export default function NewProductPage() {
   const router = useRouter()
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const { data: categories = [] } = useQuery({
@@ -43,26 +40,12 @@ export default function NewProductPage() {
     },
   })
 
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return null
-    const supabase = createClient()
-    const ext = imageFile.name.split('.').pop()
-    const filename = `${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('product-images').upload(filename, imageFile)
-    if (error) { toast.warning(`Image upload failed: ${error.message}. Product saved without image.`); return null }
-    const { data } = supabase.storage.from('product-images').getPublicUrl(filename)
-    return data.publicUrl
-  }
-
   const onSubmit = async (data: ProductCreateInput) => {
     setSaving(true)
-    const buyingPrice = data.buying_price
-    const sellingPrice = data.selling_price
-    if (sellingPrice < buyingPrice) {
+    if (data.selling_price < data.buying_price) {
       toast.warning('Selling price is less than buying price. Saving anyway.')
     }
-    const image_url = await uploadImage()
-    const result = await createProduct({ ...data, image_url } as any)
+    const result = await createProduct({ ...data, image_url: null } as any)
     setSaving(false)
     if (result.error) { toast.error(result.error); return }
     toast.success('Product created.')
@@ -194,23 +177,6 @@ export default function NewProductPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Image</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {imagePreview && (
-                <img src={imagePreview} alt="Preview" className="h-32 w-32 object-cover rounded-md border" />
-              )}
-              <Input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  setImageFile(file)
-                  setImagePreview(URL.createObjectURL(file))
-                }
-              }} />
-              <p className="text-xs text-gray-400">Uploaded to Supabase Storage (requires product-images bucket).</p>
             </CardContent>
           </Card>
 

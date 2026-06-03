@@ -66,8 +66,7 @@ export default function PurchasesPage() {
                   </tr>
                 )
               : purchases.map((p: any) => (
-                  <tr key={p.id} className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/purchases/${p.id}`)}>
+                  <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">{formatDateTime(p.created_at)}</td>
                     <td className="px-4 py-3 font-medium">{p.supplier_name}</td>
                     <td className="px-4 py-3 text-gray-500">{p.invoice_number ?? '—'}</td>

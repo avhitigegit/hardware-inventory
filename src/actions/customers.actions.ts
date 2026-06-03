@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { customerSchema, customerPaymentSchema, type CustomerInput, type CustomerPaymentInput } from '@/lib/validations/customer.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -100,6 +101,10 @@ export async function createCustomer(input: CustomerInput): Promise<ActionResult
     email: parsed.data.email || null,
   })
   if (error) return { data: null, error: error.message }
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'customer',
+    description: `Created customer "${parsed.data.name}"`,
+  })
   return { data: null, error: null }
 }
 
@@ -112,6 +117,10 @@ export async function updateCustomer(id: number, input: CustomerInput): Promise<
     email: parsed.data.email || null,
   }).eq('id', id)
   if (error) return { data: null, error: error.message }
+  await writeAuditLog(supabase, {
+    action: 'UPDATE', entity: 'customer', entity_id: String(id),
+    description: `Updated customer "${parsed.data.name}"`,
+  })
   return { data: null, error: null }
 }
 
@@ -124,8 +133,13 @@ export async function deleteCustomer(id: number): Promise<ActionResult> {
   if ((count ?? 0) > 0) {
     return { data: null, error: 'Cannot delete a customer with sales history. Remove their credit balance or deactivate instead.' }
   }
+  const { data: cust } = await supabase.from('customers').select('name').eq('id', id).single()
   const { error } = await supabase.from('customers').delete().eq('id', id)
   if (error) return { data: null, error: error.message }
+  await writeAuditLog(supabase, {
+    action: 'DELETE', entity: 'customer', entity_id: String(id),
+    description: `Deleted customer "${cust?.name ?? id}"`,
+  })
   return { data: null, error: null }
 }
 

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // vercel.json sets deployment region to bom1 (Mumbai) — closest to Sri Lanka
 };
 
 export default nextConfig;

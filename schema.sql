@@ -3,7 +3,7 @@
 -- Run this ONCE on a fresh Supabase project (before seed.sql)
 -- ============================================================
 -- ORDER TO RUN:
---   1. This file  (schema.sql)  — tables, triggers, grants, RLS
+--   1. This file  (schema.sql)  — tables, triggers, RLS, storage
 --   2. seed.sql                 — sample data (UAT only, never PROD)
 -- ============================================================
 
@@ -19,6 +19,11 @@ CREATE TABLE users (
   email       TEXT NOT NULL UNIQUE,
   role        TEXT NOT NULL CHECK (role IN ('ADMIN','OWNER','CASHIER','STORE_KEEPER')),
   is_active   BOOLEAN NOT NULL DEFAULT true,
+  birthday    DATE,
+  address     TEXT,
+  id_number   TEXT,
+  mobile      TEXT,
+  avatar_url  TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -64,7 +69,6 @@ CREATE TABLE products (
   selling_price    NUMERIC(12,2) NOT NULL,
   stock_quantity   NUMERIC(10,3) NOT NULL DEFAULT 0,
   reorder_level    NUMERIC(10,3) NOT NULL DEFAULT 5,
-  image_url        TEXT,
   is_active        BOOLEAN NOT NULL DEFAULT true,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -139,6 +143,18 @@ CREATE TABLE supplier_payments (
   amount      NUMERIC(12,2) NOT NULL,
   notes       TEXT,
   created_by  UUID REFERENCES users(id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Immutable audit trail — one row per business event, never updated or deleted
+CREATE TABLE audit_logs (
+  id          BIGSERIAL PRIMARY KEY,
+  user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_name   TEXT,
+  action      TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
+  entity      TEXT NOT NULL,
+  entity_id   TEXT,
+  description TEXT NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -249,6 +265,7 @@ GRANT USAGE, SELECT                  ON ALL SEQUENCES IN SCHEMA public TO authen
 -- PART 5 — ROW LEVEL SECURITY (RLS)
 -- ============================================================
 
+ALTER TABLE audit_logs         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers          ENABLE ROW LEVEL SECURITY;
@@ -278,15 +295,29 @@ $$ LANGUAGE SQL STABLE SECURITY DEFINER;
 -- Supabase key format (sb_publishable_ / sb_secret_).
 -- ============================================================
 
+-- ── AUDIT LOGS ───────────────────────────────────────────────
+-- Authenticated users can write; only ADMIN/OWNER can read; nobody can update/delete
+CREATE POLICY "audit_logs_insert_auth" ON audit_logs
+  FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY "audit_logs_select_admin_owner" ON audit_logs
+  FOR SELECT USING (get_user_role() IN ('ADMIN','OWNER'));
+
+
 -- ── USERS ────────────────────────────────────────────────────
-CREATE POLICY "users_select_own" ON users
+CREATE POLICY "users_select_auth" ON users
   FOR SELECT USING (auth.role() = 'authenticated');
 
+-- Admins manage all users; any user can update their own row (profile/avatar)
 CREATE POLICY "users_insert_admin" ON users
   FOR INSERT WITH CHECK (get_user_role() = 'ADMIN');
 
 CREATE POLICY "users_update_admin" ON users
   FOR UPDATE USING (get_user_role() = 'ADMIN');
+
+CREATE POLICY "users_update_self" ON users
+  FOR UPDATE USING (id = auth.uid());
 
 
 -- ── CATEGORIES ───────────────────────────────────────────────
@@ -417,6 +448,58 @@ CREATE POLICY "return_items_insert_roles" ON return_items
   FOR INSERT WITH CHECK (get_user_role() IN ('ADMIN','OWNER','CASHIER'));
 
 
+-- ============================================================
+-- PART 7 — STORAGE BUCKETS & POLICIES
+-- ============================================================
+
+-- avatars bucket — stores user profile photos (public read)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "avatars_select_public" ON storage.objects
+  FOR SELECT TO public
+  USING (bucket_id = 'avatars');
+
+CREATE POLICY "avatars_insert_auth" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'avatars');
+
+CREATE POLICY "avatars_update_auth" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'avatars');
+
+CREATE POLICY "avatars_delete_auth" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'avatars');
+
+
+-- ============================================================
+-- MIGRATION — run this on an existing UAT/PROD database
+-- (schema.sql already includes everything above for fresh installs)
+-- ============================================================
+--
+-- ALTER TABLE to add audit_logs (if upgrading existing DB):
+--
+-- CREATE TABLE IF NOT EXISTS audit_logs (
+--   id          BIGSERIAL PRIMARY KEY,
+--   user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+--   user_name   TEXT,
+--   action      TEXT NOT NULL CHECK (action IN ('CREATE','UPDATE','DELETE')),
+--   entity      TEXT NOT NULL,
+--   entity_id   TEXT,
+--   description TEXT NOT NULL,
+--   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
+-- ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+-- GRANT SELECT, INSERT ON audit_logs TO authenticated;
+-- GRANT ALL ON audit_logs TO service_role;
+-- GRANT USAGE, SELECT ON SEQUENCE audit_logs_id_seq TO authenticated;
+-- CREATE POLICY "audit_logs_insert_auth" ON audit_logs
+--   FOR INSERT TO authenticated WITH CHECK (true);
+-- CREATE POLICY "audit_logs_select_admin_owner" ON audit_logs
+--   FOR SELECT USING (get_user_role() IN ('ADMIN','OWNER'));
+--
 -- ============================================================
 -- DONE — schema.sql complete
 -- Next: create admin user in Supabase Auth dashboard, then

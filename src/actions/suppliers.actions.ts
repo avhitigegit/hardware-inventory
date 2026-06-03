@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { supplierSchema, supplierPaymentSchema, type SupplierInput, type SupplierPaymentInput } from '@/lib/validations/supplier.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -96,6 +97,10 @@ export async function createSupplier(input: SupplierInput): Promise<ActionResult
   const { error } = await supabase.from('suppliers').insert(parsed.data)
   if (error) return { data: null, error: error.message }
 
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'supplier',
+    description: `Created supplier "${parsed.data.name}"`,
+  })
   return { data: null, error: null }
 }
 
@@ -107,6 +112,10 @@ export async function updateSupplier(id: number, input: SupplierInput): Promise<
   const { error } = await supabase.from('suppliers').update(parsed.data).eq('id', id)
   if (error) return { data: null, error: error.message }
 
+  await writeAuditLog(supabase, {
+    action: 'UPDATE', entity: 'supplier', entity_id: String(id),
+    description: `Updated supplier "${parsed.data.name}"`,
+  })
   return { data: null, error: null }
 }
 
@@ -122,9 +131,14 @@ export async function deleteSupplier(id: number): Promise<ActionResult> {
     return { data: null, error: 'Cannot delete a supplier with purchase history.' }
   }
 
+  const { data: sup } = await supabase.from('suppliers').select('name').eq('id', id).single()
   const { error } = await supabase.from('suppliers').delete().eq('id', id)
   if (error) return { data: null, error: error.message }
 
+  await writeAuditLog(supabase, {
+    action: 'DELETE', entity: 'supplier', entity_id: String(id),
+    description: `Deleted supplier "${sup?.name ?? id}"`,
+  })
   return { data: null, error: null }
 }
 

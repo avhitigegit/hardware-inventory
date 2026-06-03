@@ -108,17 +108,20 @@ export default function SuppliersPage() {
                   </tr>
                 )
               : suppliers.map((s: any) => (
-                  <tr key={s.id} className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/suppliers/${s.id}`)}>
-                    <td className="px-4 py-3 font-medium text-blue-600">{s.name}</td>
+                  <tr key={s.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{s.name}</td>
                     <td className="px-4 py-3 text-gray-600">{s.contact_person ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{s.phone ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{s.email ?? '—'}</td>
                     <td className={`px-4 py-3 text-right font-medium ${s.credit_balance > 0 ? 'text-amber-600' : 'text-gray-600'}`}>
                       {formatCurrency(s.credit_balance)}
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline"
+                          onClick={() => router.push(`/suppliers/${s.id}`)}>
+                          View
+                        </Button>
                         <Button size="sm" variant="outline"
                           onClick={() => router.push(`/suppliers/${s.id}`)}>
                           Edit

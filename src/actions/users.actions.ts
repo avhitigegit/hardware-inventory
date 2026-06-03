@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js'
 import type { UserRole } from '@/types/database.types'
+import { writeAuditLog } from './audit.actions'
 
 function adminClient() {
   return createSupabaseAdminClient(
@@ -41,6 +42,12 @@ export async function updateUserRole(id: string, role: UserRole) {
 
   const { error } = await supabase.from('users').update({ role }).eq('id', id)
   if (error) return { data: null, error: error.message }
+
+  const { data: target } = await supabase.from('users').select('full_name').eq('id', id).single()
+  await writeAuditLog(supabase, {
+    action: 'UPDATE', entity: 'user', entity_id: id,
+    description: `Changed role of "${target?.full_name ?? id}" to ${role}`,
+  })
   return { data: true, error: null }
 }
 
@@ -77,7 +84,30 @@ export async function toggleUserStatus(id: string) {
     .update({ is_active: !target.is_active })
     .eq('id', id)
   if (error) return { data: null, error: error.message }
+
+  const { data: named } = await supabase.from('users').select('full_name').eq('id', id).single()
+  const verb = target.is_active ? 'Deactivated' : 'Activated'
+  await writeAuditLog(supabase, {
+    action: 'UPDATE', entity: 'user', entity_id: id,
+    description: `${verb} user "${named?.full_name ?? id}"`,
+  })
   return { data: !target.is_active, error: null }
+}
+
+export async function updateUserProfile(fields: {
+  full_name?: string
+  birthday?: string | null
+  address?: string | null
+  id_number?: string | null
+  mobile?: string | null
+  avatar_url?: string | null
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null, error: 'Unauthorized' }
+  const { error } = await supabase.from('users').update(fields).eq('id', user.id)
+  if (error) return { data: null, error: error.message }
+  return { data: true, error: null }
 }
 
 export async function changePassword(newPassword: string) {
@@ -122,5 +152,9 @@ export async function inviteUser(fullName: string, email: string, role: UserRole
     return { data: null, error: insertError.message }
   }
 
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'user', entity_id: authData.user.id,
+    description: `Created user "${fullName}" (${email}) with role ${role}`,
+  })
   return { data: { tempPassword }, error: null }
 }

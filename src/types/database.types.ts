@@ -7,6 +7,11 @@ export type AppUser = {
   role: UserRole
   is_active: boolean
   created_at: string
+  birthday: string | null
+  address: string | null
+  id_number: string | null
+  mobile: string | null
+  avatar_url: string | null
 }
 
 export type Category = {

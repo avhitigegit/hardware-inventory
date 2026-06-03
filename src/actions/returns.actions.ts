@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { returnSchema, type ReturnInput } from '@/lib/validations/return.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -72,13 +73,17 @@ export async function createReturn(input: ReturnInput): Promise<ActionResult<{ i
   )
   if (itemsError) return { data: null, error: itemsError.message }
 
-  // Restore stock for each returned product
+  // Restore stock — fetch all returned products in one query, then update each
+  const returnIds = items.map(i => i.product_id)
+  const { data: returnedProducts } = await supabase
+    .from('products')
+    .select('id, stock_quantity')
+    .in('id', returnIds)
+
+  const returnedMap = new Map((returnedProducts ?? []).map(p => [p.id, p]))
+
   for (const item of items) {
-    const { data: product } = await supabase
-      .from('products')
-      .select('stock_quantity')
-      .eq('id', item.product_id)
-      .single()
+    const product = returnedMap.get(item.product_id)
     if (product) {
       await supabase
         .from('products')
@@ -101,6 +106,11 @@ export async function createReturn(input: ReturnInput): Promise<ActionResult<{ i
         .eq('id', customer_id)
     }
   }
+
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'return', entity_id: String(ret.id),
+    description: `Processed return RET-${String(ret.id).padStart(6, '0')} — Rs. ${total_return_amount.toFixed(2)} (${return_method === 'CASH_REFUND' ? 'Cash Refund' : 'Credit Adjustment'})`,
+  })
 
   return { data: { id: ret.id }, error: null }
 }

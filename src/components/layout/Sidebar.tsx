@@ -39,6 +39,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Users', href: '/users', roles: ['ADMIN'] },
+  { label: 'Audit Log', href: '/audit-logs', roles: ['ADMIN', 'OWNER'] },
 ]
 
 const roleBadgeColor: Record<UserRole, string> = {

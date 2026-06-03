@@ -1,161 +1,408 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { zeroPad } from '@/lib/utils'
 
-const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica', color: '#1a1a1a', maxWidth: 300 },
-  center: { textAlign: 'center' },
-  shopName: { fontSize: 14, fontFamily: 'Helvetica-Bold', textAlign: 'center', marginBottom: 2 },
-  shopDetail: { fontSize: 9, color: '#6b7280', textAlign: 'center' },
-  divider: { borderBottom: '1 solid #e5e7eb', marginVertical: 8 },
-  receiptNo: { fontSize: 12, fontFamily: 'Helvetica-Bold', textAlign: 'center', marginVertical: 6 },
-  row: { flexDirection: 'row', marginBottom: 3 },
-  label: { width: 110, color: '#6b7280' },
-  value: { flex: 1 },
-  tableHeader: { flexDirection: 'row', borderBottom: '1 solid #374151', paddingBottom: 4, marginBottom: 4 },
-  tableRow: { flexDirection: 'row', marginBottom: 3 },
-  col1: { flex: 3 },
-  col2: { width: 30, textAlign: 'center' },
-  col3: { width: 60, textAlign: 'right' },
-  col4: { width: 60, textAlign: 'right' },
-  th: { fontFamily: 'Helvetica-Bold', fontSize: 9 },
-  totalSection: { borderTop: '1 solid #e5e7eb', paddingTop: 8, marginTop: 8 },
-  totalRow: { flexDirection: 'row', marginBottom: 3 },
-  totalLabel: { flex: 1, color: '#6b7280' },
-  totalValue: { width: 70, textAlign: 'right' },
-  grandTotal: { flexDirection: 'row', marginTop: 4 },
-  grandTotalLabel: { flex: 1, fontFamily: 'Helvetica-Bold' },
-  grandTotalValue: { width: 70, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 12 },
-  changeRow: { flexDirection: 'row', marginTop: 6 },
-  changeLabel: { flex: 1, fontFamily: 'Helvetica-Bold', color: '#16a34a' },
-  changeValue: { width: 70, textAlign: 'right', fontFamily: 'Helvetica-Bold', fontSize: 12, color: '#16a34a' },
-  creditLabel: { color: '#d97706', fontFamily: 'Helvetica-Bold', textAlign: 'center', marginTop: 8 },
-  footer: { marginTop: 16, textAlign: 'center', fontSize: 9, color: '#9ca3af' },
+// Page: 400pt wide, padding 24 each side → 352pt usable content
+const PAD = 24
+
+const s = StyleSheet.create({
+  page: {
+    paddingHorizontal: PAD,
+    paddingTop: 24,
+    paddingBottom: 28,
+    fontSize: 9,
+    fontFamily: 'Helvetica',
+    color: '#111111',
+    backgroundColor: '#ffffff',
+  },
+
+  // ── Header ───────────────────────────────────────────────────
+  shopName: {
+    fontSize: 18,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'center',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  shopSub: {
+    fontSize: 8.5,
+    color: '#555555',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+
+  // ── Dividers ─────────────────────────────────────────────────
+  solidLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    borderBottomStyle: 'solid',
+    marginVertical: 10,
+  },
+  dashLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    borderBottomStyle: 'dashed',
+    marginVertical: 8,
+  },
+  thickLine: {
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#374151',
+    borderBottomStyle: 'solid',
+    marginVertical: 0,
+  },
+
+  // ── Receipt number ────────────────────────────────────────────
+  receiptBlock: {
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  receiptLabel: {
+    fontSize: 8,
+    color: '#9ca3af',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  receiptNo: {
+    fontSize: 13,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+
+  // ── Meta rows ─────────────────────────────────────────────────
+  metaSection: {
+    marginBottom: 2,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    marginBottom: 5,
+    alignItems: 'flex-start',
+  },
+  metaLabel: {
+    width: 68,
+    fontSize: 8.5,
+    color: '#6b7280',
+  },
+  metaColon: {
+    width: 10,
+    fontSize: 8.5,
+    color: '#6b7280',
+  },
+  metaValue: {
+    flex: 1,
+    fontSize: 8.5,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111111',
+  },
+
+  // ── Items table ───────────────────────────────────────────────
+  tableHeaderRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  thItem:  { flex: 1,   fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', paddingRight: 6 },
+  thQty:   { width: 34, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', textAlign: 'center' },
+  thPrice: { width: 78, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', textAlign: 'right' },
+  thTotal: { width: 78, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', textAlign: 'right' },
+
+  tableDataRow: {
+    flexDirection: 'row',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    borderBottomStyle: 'solid',
+    alignItems: 'flex-start',
+  },
+  tdItem:  { flex: 1,   fontSize: 9,  color: '#111111', paddingRight: 6 },
+  tdQty:   { width: 34, fontSize: 9,  color: '#374151', textAlign: 'center' },
+  tdPrice: { width: 78, fontSize: 9,  color: '#374151', textAlign: 'right' },
+  tdTotal: { width: 78, fontSize: 9,  fontFamily: 'Helvetica-Bold', color: '#111111', textAlign: 'right' },
+
+  // ── Totals ────────────────────────────────────────────────────
+  totalsSection: {
+    marginTop: 10,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    marginBottom: 5,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    flex: 1,
+    fontSize: 9,
+    color: '#6b7280',
+  },
+  summaryValue: {
+    width: 100,
+    fontSize: 9,
+    textAlign: 'right',
+    color: '#374151',
+  },
+
+  grandTotalRow: {
+    flexDirection: 'row',
+    paddingVertical: 8,
+    marginTop: 4,
+    marginBottom: 4,
+    borderTopWidth: 2,
+    borderTopColor: '#111111',
+    borderTopStyle: 'solid',
+    borderBottomWidth: 2,
+    borderBottomColor: '#111111',
+    borderBottomStyle: 'solid',
+    alignItems: 'center',
+  },
+  grandTotalLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: '#111111',
+    letterSpacing: 0.5,
+  },
+  grandTotalValue: {
+    width: 100,
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'right',
+    color: '#111111',
+  },
+
+  // Cash change box
+  changeBox: {
+    flexDirection: 'row',
+    marginTop: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  changeLabel: {
+    flex: 1,
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: '#15803d',
+  },
+  changeValue: {
+    fontSize: 12,
+    fontFamily: 'Helvetica-Bold',
+    color: '#15803d',
+    textAlign: 'right',
+  },
+
+  // Credit box
+  creditBox: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#fffbeb',
+    borderRadius: 4,
+  },
+  creditTitle: {
+    fontSize: 8,
+    letterSpacing: 1,
+    color: '#92400e',
+    textAlign: 'center',
+    marginBottom: 3,
+  },
+  creditAmount: {
+    fontSize: 13,
+    fontFamily: 'Helvetica-Bold',
+    color: '#d97706',
+    textAlign: 'center',
+  },
+  creditCustomer: {
+    fontSize: 8,
+    color: '#92400e',
+    textAlign: 'center',
+    marginTop: 3,
+  },
+
+  // ── Footer ────────────────────────────────────────────────────
+  footer: {
+    marginTop: 18,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    borderTopStyle: 'dashed',
+    textAlign: 'center',
+    fontSize: 8.5,
+    color: '#9ca3af',
+  },
+  footerSub: {
+    textAlign: 'center',
+    fontSize: 8,
+    color: '#d1d5db',
+    marginTop: 3,
+  },
 })
 
-function formatColomboPdf(isoString: string) {
-  return new Intl.DateTimeFormat('en-GB', {
+function formatDate(iso: string) {
+  const d = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Colombo',
     day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(new Date(isoString))
+    hour: '2-digit', minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso))
+  // "03/06/2026, 17:11" → "03/06/2026  17:11"
+  return d.replace(',', ' ')
 }
 
-type SaleReceiptProps = {
-  sale: any
+function rs(n: number) {
+  return `Rs. ${n.toFixed(2)}`
 }
 
-export default function SaleReceipt({ sale }: SaleReceiptProps) {
-  const shopName = process.env.NEXT_PUBLIC_SHOP_NAME ?? 'Hardware Shop'
+function qty(n: number) {
+  return n % 1 === 0 ? String(n) : n.toFixed(2)
+}
+
+export default function SaleReceipt({ sale }: { sale: any }) {
+  const shopName    = process.env.NEXT_PUBLIC_SHOP_NAME    ?? 'Hardware Shop'
   const shopAddress = process.env.NEXT_PUBLIC_SHOP_ADDRESS ?? ''
-  const shopPhone = process.env.NEXT_PUBLIC_SHOP_PHONE ?? ''
+  const shopPhone   = process.env.NEXT_PUBLIC_SHOP_PHONE   ?? ''
 
-  const items = sale.sale_items ?? []
-  const change = sale.payment_type === 'CASH'
-    ? Math.max(0, (sale.paid_amount ?? 0) - sale.total_amount)
-    : 0
+  const items    = sale.sale_items ?? []
+  const discount = Number(sale.discount_amount ?? 0)
+  const total    = Number(sale.total_amount)
+  const subtotal = total + discount
+  const paid     = Number(sale.paid_amount ?? 0)
+  const balance  = Number(sale.balance_amount ?? 0)
+  const change   = sale.payment_type === 'CASH' ? Math.max(0, paid - total) : 0
 
   return (
-    <Document>
-      <Page size={[226, 600]} style={styles.page}>
-        <Text style={styles.shopName}>{shopName}</Text>
-        {shopAddress ? <Text style={styles.shopDetail}>{shopAddress}</Text> : null}
-        {shopPhone ? <Text style={styles.shopDetail}>Tel: {shopPhone}</Text> : null}
+    // hyphenationCallback prevents word-breaking / hyphenation in all text nodes
+    <Document hyphenationCallback={(word) => [word]}>
+      <Page size={[400, 840]} style={s.page}>
 
-        <View style={styles.divider} />
+        {/* ── Shop header ── */}
+        <Text style={s.shopName}>{shopName}</Text>
+        {shopAddress ? <Text style={s.shopSub}>{shopAddress}</Text> : null}
+        {shopPhone   ? <Text style={s.shopSub}>Tel: {shopPhone}</Text> : null}
 
-        <Text style={styles.receiptNo}>RECEIPT — REC-{zeroPad(sale.id, 6)}</Text>
+        <View style={s.solidLine} />
 
-        <View style={styles.divider} />
-
-        <View style={styles.row}>
-          <Text style={styles.label}>Date:</Text>
-          <Text style={styles.value}>{formatColomboPdf(sale.created_at)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Cashier:</Text>
-          <Text style={styles.value}>{sale.users?.full_name ?? '—'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Customer:</Text>
-          <Text style={styles.value}>{sale.customers?.name ?? 'Walk-in Customer'}</Text>
+        {/* ── Receipt number ── */}
+        <View style={s.receiptBlock}>
+          <Text style={s.receiptLabel}>RECEIPT</Text>
+          <Text style={s.receiptNo}>REC-{zeroPad(sale.id, 6)}</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={s.solidLine} />
 
-        {/* Items */}
-        <View style={styles.tableHeader}>
-          <Text style={[styles.col1, styles.th]}>Item</Text>
-          <Text style={[styles.col2, styles.th]}>Qty</Text>
-          <Text style={[styles.col3, styles.th]}>Price</Text>
-          <Text style={[styles.col4, styles.th]}>Total</Text>
+        {/* ── Meta info ── */}
+        <View style={s.metaSection}>
+          <View style={s.metaRow}>
+            <Text style={s.metaLabel}>Date</Text>
+            <Text style={s.metaColon}>:</Text>
+            <Text style={s.metaValue}>{formatDate(sale.created_at)}</Text>
+          </View>
+          <View style={s.metaRow}>
+            <Text style={s.metaLabel}>Cashier</Text>
+            <Text style={s.metaColon}>:</Text>
+            <Text style={s.metaValue}>{sale.users?.full_name ?? '—'}</Text>
+          </View>
+          <View style={s.metaRow}>
+            <Text style={s.metaLabel}>Customer</Text>
+            <Text style={s.metaColon}>:</Text>
+            <Text style={s.metaValue}>{sale.customers?.name ?? 'Walk-in Customer'}</Text>
+          </View>
+          <View style={s.metaRow}>
+            <Text style={s.metaLabel}>Payment</Text>
+            <Text style={s.metaColon}>:</Text>
+            <Text style={s.metaValue}>{sale.payment_type}</Text>
+          </View>
         </View>
+
+        <View style={s.solidLine} />
+
+        {/* ── Items table header ── */}
+        <View style={s.tableHeaderRow}>
+          <Text style={s.thItem}>ITEM</Text>
+          <Text style={s.thQty}>QTY</Text>
+          <Text style={s.thPrice}>UNIT PRICE</Text>
+          <Text style={s.thTotal}>AMOUNT</Text>
+        </View>
+        <View style={s.thickLine} />
+
+        {/* ── Items ── */}
         {items.map((item: any, i: number) => (
-          <View key={i} style={styles.tableRow}>
-            <Text style={styles.col1}>{item.products?.name ?? '—'}</Text>
-            <Text style={styles.col2}>{item.quantity}</Text>
-            <Text style={styles.col3}>Rs. {Number(item.unit_price).toFixed(2)}</Text>
-            <Text style={styles.col4}>Rs. {Number(item.total_price).toFixed(2)}</Text>
+          <View key={i} style={s.tableDataRow}>
+            <Text style={s.tdItem}>{item.products?.name ?? '—'}</Text>
+            <Text style={s.tdQty}>{qty(Number(item.quantity))}</Text>
+            <Text style={s.tdPrice}>{rs(Number(item.unit_price))}</Text>
+            <Text style={s.tdTotal}>{rs(Number(item.total_price))}</Text>
           </View>
         ))}
 
-        {/* Totals */}
-        <View style={styles.totalSection}>
-          {Number(sale.discount_amount ?? 0) > 0 && (
+        {/* ── Totals ── */}
+        <View style={s.totalsSection}>
+
+          {discount > 0 && (
             <>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Subtotal</Text>
-                <Text style={styles.totalValue}>Rs. {(Number(sale.total_amount) + Number(sale.discount_amount)).toFixed(2)}</Text>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>Subtotal</Text>
+                <Text style={s.summaryValue}>{rs(subtotal)}</Text>
               </View>
-              <View style={styles.totalRow}>
-                <Text style={[styles.totalLabel, { color: '#16a34a' }]}>Discount</Text>
-                <Text style={[styles.totalValue, { color: '#16a34a' }]}>− Rs. {Number(sale.discount_amount).toFixed(2)}</Text>
+              <View style={s.summaryRow}>
+                <Text style={[s.summaryLabel, { color: '#16a34a' }]}>Discount</Text>
+                <Text style={[s.summaryValue, { color: '#16a34a' }]}>- {rs(discount)}</Text>
               </View>
             </>
           )}
-          <View style={styles.grandTotal}>
-            <Text style={styles.grandTotalLabel}>Total Amount</Text>
-            <Text style={styles.grandTotalValue}>Rs. {Number(sale.total_amount).toFixed(2)}</Text>
-          </View>
-          <View style={[styles.row, { marginTop: 4 }]}>
-            <Text style={styles.totalLabel}>Payment Type</Text>
-            <Text style={[styles.totalValue, { fontFamily: 'Helvetica-Bold' }]}>{sale.payment_type}</Text>
+
+          <View style={s.grandTotalRow}>
+            <Text style={s.grandTotalLabel}>TOTAL</Text>
+            <Text style={s.grandTotalValue}>{rs(total)}</Text>
           </View>
 
+          {/* CASH */}
           {sale.payment_type === 'CASH' && (
             <>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Amount Received</Text>
-                <Text style={styles.totalValue}>Rs. {Number(sale.paid_amount ?? sale.total_amount).toFixed(2)}</Text>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>Amount Received</Text>
+                <Text style={s.summaryValue}>{rs(paid)}</Text>
               </View>
-              <View style={styles.changeRow}>
-                <Text style={styles.changeLabel}>Change</Text>
-                <Text style={styles.changeValue}>Rs. {change.toFixed(2)}</Text>
+              <View style={s.changeBox}>
+                <Text style={s.changeLabel}>Change</Text>
+                <Text style={s.changeValue}>{rs(change)}</Text>
               </View>
             </>
           )}
 
+          {/* CREDIT */}
           {sale.payment_type === 'CREDIT' && (
-            <Text style={styles.creditLabel}>On Credit — {sale.customers?.name ?? 'Customer'}</Text>
+            <View style={s.creditBox}>
+              <Text style={s.creditTitle}>ON CREDIT</Text>
+              <Text style={s.creditAmount}>{rs(balance)}</Text>
+              {sale.customers?.name ? (
+                <Text style={s.creditCustomer}>{sale.customers.name}</Text>
+              ) : null}
+            </View>
           )}
 
+          {/* SPLIT */}
           {sale.payment_type === 'SPLIT' && (
             <>
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Cash Paid</Text>
-                <Text style={styles.totalValue}>Rs. {Number(sale.paid_amount ?? 0).toFixed(2)}</Text>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>Cash Paid</Text>
+                <Text style={s.summaryValue}>{rs(paid)}</Text>
               </View>
-              <View style={styles.totalRow}>
-                <Text style={[styles.totalLabel, { color: '#d97706' }]}>On Credit</Text>
-                <Text style={[styles.totalValue, { color: '#d97706' }]}>Rs. {Number(sale.balance_amount ?? 0).toFixed(2)}</Text>
+              <View style={s.creditBox}>
+                <Text style={s.creditTitle}>ON CREDIT</Text>
+                <Text style={s.creditAmount}>{rs(balance)}</Text>
+                {sale.customers?.name ? (
+                  <Text style={s.creditCustomer}>{sale.customers.name}</Text>
+                ) : null}
               </View>
-              {sale.customers?.name && (
-                <Text style={styles.creditLabel}>Credit: {sale.customers.name}</Text>
-              )}
             </>
           )}
         </View>
 
-        <Text style={styles.footer}>Thank you for your purchase!</Text>
+        {/* ── Footer ── */}
+        <Text style={s.footer}>Thank you for your purchase!</Text>
+        <Text style={s.footerSub}>Please retain this receipt for your records.</Text>
+
       </Page>
     </Document>
   )

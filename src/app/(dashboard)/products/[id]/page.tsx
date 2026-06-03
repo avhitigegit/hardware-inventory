@@ -71,11 +71,13 @@ export default function ProductDetailPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <button onClick={() => router.push('/products')} className="text-sm text-blue-600 hover:underline block">← Back to Products</button>
+
+      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <button onClick={() => router.push('/products')} className="text-sm text-blue-600 hover:underline mb-1 block">← Back to Products</button>
           <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
-          <p className="text-sm text-gray-500 font-mono">{product.sku}</p>
+          <p className="text-sm text-gray-500 font-mono mt-0.5">{product.sku}</p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <Badge variant={product.is_active ? 'default' : 'secondary'}>
@@ -145,10 +147,6 @@ export default function ProductDetailPage() {
               <dt className="text-gray-500 mb-1">Barcode</dt>
               <dd className="font-medium font-mono">{product.barcode ?? '—'}</dd>
             </div>
-            <div className="md:col-span-2">
-              <dt className="text-gray-500 mb-1">Description</dt>
-              <dd className="font-medium">{product.description ?? '—'}</dd>
-            </div>
             <div>
               <dt className="text-gray-500 mb-1">Added</dt>
               <dd className="font-medium">{formatDateTime(product.created_at)}</dd>
@@ -156,15 +154,6 @@ export default function ProductDetailPage() {
           </dl>
         </CardContent>
       </Card>
-
-      {product.image_url && (
-        <Card>
-          <CardHeader><CardTitle>Image</CardTitle></CardHeader>
-          <CardContent>
-            <img src={product.image_url} alt={product.name} className="h-48 w-48 object-cover rounded-md border" />
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

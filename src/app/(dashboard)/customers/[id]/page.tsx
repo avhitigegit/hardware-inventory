@@ -83,9 +83,9 @@ export default function CustomerDetailPage() {
     onSuccess: (result) => {
       if (result.error) { toast.error(result.error); return }
       toast.success('Customer updated.')
-      queryClient.invalidateQueries({ queryKey: ['customer', id] })
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       queryClient.invalidateQueries({ queryKey: ['customers-list'] })
+      router.push('/customers')
     },
   })
 
@@ -184,13 +184,14 @@ export default function CustomerDetailPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              {canEdit && (
-                <div className="md:col-span-2 flex justify-end">
+              <div className="md:col-span-2 flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => router.push('/customers')}>Cancel</Button>
+                {canEdit && (
                   <Button type="submit" disabled={updateMutation.isPending}>
                     {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </form>
           </Form>
         </CardContent>

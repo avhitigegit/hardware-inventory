@@ -116,14 +116,14 @@ export default function ProductsPage() {
               <th className="px-4 py-3 text-right font-medium text-gray-600">Stock</th>
               <th className="px-4 py-3 text-right font-medium text-gray-600">Selling Price</th>
               <th className="px-4 py-3 text-center font-medium text-gray-600">Status</th>
-              {canWrite && <th className="px-4 py-3 text-right font-medium text-gray-600">Actions</th>}
+              <th className="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    {Array.from({ length: canWrite ? 8 : 7 }).map((_, j) => (
+                    {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
                     ))}
                   </tr>
@@ -131,7 +131,7 @@ export default function ProductsPage() {
               : products.length === 0
               ? (
                   <tr>
-                    <td colSpan={canWrite ? 8 : 7} className="px-4 py-12 text-center text-gray-400">
+                    <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
                       {lowStock ? 'No low stock products.' : 'No products found.'}
                     </td>
                   </tr>
@@ -154,14 +154,15 @@ export default function ProductsPage() {
                           {p.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </td>
-                      {canWrite && (
-                        <td className="px-4 py-3 text-right space-x-2">
+                      <td className="px-4 py-3 text-right space-x-2">
+                        <Button size="sm" variant="outline" onClick={() => router.push(`/products/${p.id}`)}>View</Button>
+                        {canWrite && (
                           <Button size="sm" variant="outline" onClick={() => router.push(`/products/${p.id}/edit`)}>Edit</Button>
-                          {canDelete && (
-                            <Button size="sm" variant="destructive" onClick={() => { setDeleteTarget(p); setDeleteError('') }}>Delete</Button>
-                          )}
-                        </td>
-                      )}
+                        )}
+                        {canDelete && (
+                          <Button size="sm" variant="destructive" onClick={() => { setDeleteTarget(p); setDeleteError('') }}>Delete</Button>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}

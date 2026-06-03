@@ -83,9 +83,9 @@ export default function SupplierDetailPage() {
     onSuccess: (result) => {
       if (result.error) { toast.error(result.error); return }
       toast.success('Supplier updated.')
-      queryClient.invalidateQueries({ queryKey: ['supplier', id] })
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       queryClient.invalidateQueries({ queryKey: ['suppliers-list'] })
+      router.push('/suppliers')
     },
   })
 
@@ -167,13 +167,14 @@ export default function SupplierDetailPage() {
                   </FormItem>
                 )} />
               ))}
-              {canEdit && (
-                <div className="md:col-span-2 flex justify-end">
+              <div className="md:col-span-2 flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => router.push('/suppliers')}>Cancel</Button>
+                {canEdit && (
                   <Button type="submit" disabled={updateMutation.isPending}>
                     {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </form>
           </Form>
         </CardContent>

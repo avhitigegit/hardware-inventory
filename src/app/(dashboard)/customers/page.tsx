@@ -124,9 +124,8 @@ export default function CustomersPage() {
                   </tr>
                 )
               : customers.map((c: any) => (
-                  <tr key={c.id} className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/customers/${c.id}`)}>
-                    <td className="px-4 py-3 font-medium text-blue-600">{c.name}</td>
+                  <tr key={c.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{c.name}</td>
                     <td className="px-4 py-3 text-gray-600">{c.phone ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{c.email ?? '—'}</td>
                     <td className="px-4 py-3 text-right text-gray-600">
@@ -135,8 +134,12 @@ export default function CustomersPage() {
                     <td className={`px-4 py-3 text-right font-medium ${c.credit_balance > 0 ? 'text-amber-600' : 'text-gray-600'}`}>
                       {formatCurrency(c.credit_balance)}
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline"
+                          onClick={() => router.push(`/customers/${c.id}`)}>
+                          View
+                        </Button>
                         <Button size="sm" variant="outline"
                           onClick={() => router.push(`/customers/${c.id}`)}>
                           Edit

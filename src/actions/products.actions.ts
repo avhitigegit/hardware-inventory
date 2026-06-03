@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { productSchema, productCreateSchema, type ProductInput, type ProductCreateInput } from '@/lib/validations/product.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -126,6 +127,11 @@ export async function createProduct(input: ProductCreateInput): Promise<ActionRe
   })
 
   if (error) return { data: null, error: error.message }
+
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'product',
+    description: `Created product "${productData.name}" (SKU: ${productData.sku})`,
+  })
   return { data: null, error: null }
 }
 
@@ -160,6 +166,11 @@ export async function updateProduct(id: number, input: ProductInput): Promise<Ac
     .eq('id', id)
 
   if (error) return { data: null, error: error.message }
+
+  await writeAuditLog(supabase, {
+    action: 'UPDATE', entity: 'product', entity_id: String(id),
+    description: `Updated product "${parsed.data.name}" (SKU: ${parsed.data.sku})`,
+  })
   return { data: null, error: null }
 }
 
@@ -190,9 +201,14 @@ export async function deleteProduct(id: number): Promise<ActionResult> {
     }
   }
 
+  const { data: product } = await supabase.from('products').select('name,sku').eq('id', id).single()
   const { error } = await supabase.from('products').delete().eq('id', id)
   if (error) return { data: null, error: error.message }
 
+  await writeAuditLog(supabase, {
+    action: 'DELETE', entity: 'product', entity_id: String(id),
+    description: `Deleted product "${product?.name ?? id}" (SKU: ${product?.sku ?? '—'})`,
+  })
   return { data: null, error: null }
 }
 

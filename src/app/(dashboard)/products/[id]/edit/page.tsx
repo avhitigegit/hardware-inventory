@@ -10,7 +10,6 @@ import { getProductById, updateProduct } from '@/actions/products.actions'
 import { getCategories } from '@/actions/categories.actions'
 import { getSuppliers } from '@/actions/suppliers.actions'
 import { productSchema, PRODUCT_UNITS, type ProductInput } from '@/lib/validations/product.schema'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,8 +22,6 @@ export default function EditProductPage() {
   const queryClient = useQueryClient()
   const id = Number(params.id)
 
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   const { data: categories = [] } = useQuery({
@@ -76,31 +73,18 @@ export default function EditProductPage() {
     } : undefined,
   })
 
-  const uploadImage = async (): Promise<string | null> => {
-    if (!imageFile) return null
-    const supabase = createClient()
-    const ext = imageFile.name.split('.').pop()
-    const filename = `${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('product-images').upload(filename, imageFile)
-    if (error) { toast.warning(`Image upload failed: ${error.message}. Product saved without new image.`); return null }
-    const { data } = supabase.storage.from('product-images').getPublicUrl(filename)
-    return data.publicUrl
-  }
-
   const onSubmit = async (data: ProductInput) => {
     setSaving(true)
     if (data.selling_price < data.buying_price) {
       toast.warning('Selling price is less than buying price. Saving anyway.')
     }
-    const newImageUrl = await uploadImage()
-    const image_url = newImageUrl ?? product?.image_url ?? null
-    const result = await updateProduct(id, { ...data, image_url } as any)
+    const result = await updateProduct(id, { ...data, image_url: product?.image_url ?? null } as any)
     setSaving(false)
     if (result.error) { toast.error(result.error); return }
     toast.success('Product updated.')
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['product', id] })
-    router.push(`/products/${id}`)
+    router.push('/products')
   }
 
   if (isLoading) return (
@@ -116,7 +100,7 @@ export default function EditProductPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <button onClick={() => router.push(`/products/${id}`)} className="text-sm text-blue-600 hover:underline mb-1 block">← Back to Product</button>
+        <button onClick={() => router.push('/products')} className="text-sm text-blue-600 hover:underline mb-1 block">← Back to Products</button>
         <h1 className="text-2xl font-bold text-gray-800">Edit Product</h1>
       </div>
 
@@ -250,29 +234,8 @@ export default function EditProductPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Image</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              {(imagePreview ?? product.image_url) && (
-                <img
-                  src={imagePreview ?? product.image_url!}
-                  alt="Product"
-                  className="h-32 w-32 object-cover rounded-md border"
-                />
-              )}
-              <Input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) {
-                  setImageFile(file)
-                  setImagePreview(URL.createObjectURL(file))
-                }
-              }} />
-              <p className="text-xs text-gray-400">Upload a new image to replace the existing one.</p>
-            </CardContent>
-          </Card>
-
           <div className="flex gap-3 justify-end">
-            <Button type="button" variant="outline" onClick={() => router.push(`/products/${id}`)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => router.push('/products')}>Cancel</Button>
             <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
           </div>
         </form>

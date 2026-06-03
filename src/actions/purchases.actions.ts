@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { purchaseSchema, type PurchaseInput } from '@/lib/validations/purchase.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -87,6 +88,12 @@ export async function createPurchase(input: PurchaseInput): Promise<ActionResult
 
   const { error: itemsError } = await supabase.from('purchase_items').insert(purchaseItems)
   if (itemsError) return { data: null, error: itemsError.message }
+
+  const { data: supplier } = await supabase.from('suppliers').select('name').eq('id', parsed.data.supplier_id).single()
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'purchase', entity_id: String(purchase.id),
+    description: `Received GRN-${String(purchase.id).padStart(6, '0')} from "${supplier?.name ?? '—'}" — ${parsed.data.items.length} item(s), Rs. ${totalAmount.toFixed(2)} (${parsed.data.payment_type})`,
+  })
 
   return { data: { id: purchase.id }, error: null }
 }

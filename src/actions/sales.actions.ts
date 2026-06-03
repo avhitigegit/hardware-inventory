@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { type SaleInput } from '@/lib/validations/sale.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -68,14 +69,19 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
     return { data: null, error: 'Customer is required for split payment sales.' }
   }
 
-  // Stock check
-  for (const item of input.items) {
-    const { data: product } = await supabase
-      .from('products')
-      .select('stock_quantity, name, is_active')
-      .eq('id', item.product_id)
-      .single()
+  // Stock check — single query for all cart items instead of one query per item
+  const productIds = input.items.map(i => i.product_id)
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select('id, stock_quantity, name, is_active')
+    .in('id', productIds)
 
+  if (productsError) return { data: null, error: productsError.message }
+
+  const productMap = new Map((products ?? []).map(p => [p.id, p]))
+
+  for (const item of input.items) {
+    const product = productMap.get(item.product_id)
     if (!product) return { data: null, error: `Product not found.` }
     if (!product.is_active) return { data: null, error: `${item.product_name} is not available for sale.` }
     if (product.stock_quantity < item.quantity) {
@@ -174,6 +180,11 @@ export async function createSale(input: SaleInput): Promise<ActionResult<{ id: n
 
   const { error: itemsError } = await supabase.from('sale_items').insert(saleItems)
   if (itemsError) return { data: null, error: itemsError.message }
+
+  await writeAuditLog(supabase, {
+    action: 'CREATE', entity: 'sale', entity_id: String(sale.id),
+    description: `Completed sale REC-${String(sale.id).padStart(6, '0')} — ${input.items.length} item(s), Rs. ${totalAmount.toFixed(2)} (${input.payment_type})`,
+  })
 
   return { data: { id: sale.id }, error: null }
 }

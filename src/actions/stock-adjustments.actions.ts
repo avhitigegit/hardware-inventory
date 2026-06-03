@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { stockAdjustmentSchema, type StockAdjustmentInput } from '@/lib/validations/stock-adjustment.schema'
+import { writeAuditLog } from './audit.actions'
 
 type ActionResult<T = null> = { data: T; error: null } | { data: null; error: string }
 
@@ -81,6 +82,12 @@ export async function createStockAdjustment(input: StockAdjustmentInput): Promis
     .update({ stock_quantity: newQty })
     .eq('id', parsed.data.product_id)
   if (updateError) return { data: null, error: updateError.message }
+
+  const verb = parsed.data.adjustment_type === 'ADD' ? 'Added' : 'Subtracted'
+  await writeAuditLog(supabase, {
+    action: 'UPDATE', entity: 'stock_adjustment',
+    description: `${verb} ${parsed.data.quantity} unit(s) ${parsed.data.adjustment_type === 'ADD' ? 'to' : 'from'} "${product.name}" — Reason: ${parsed.data.reason}`,
+  })
 
   return { data: null, error: null }
 }
