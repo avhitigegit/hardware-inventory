@@ -487,6 +487,12 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Drop storage policies first (storage.objects is not dropped by PART 0)
+DROP POLICY IF EXISTS "avatars_select_public" ON storage.objects;
+DROP POLICY IF EXISTS "avatars_insert_auth"   ON storage.objects;
+DROP POLICY IF EXISTS "avatars_update_auth"   ON storage.objects;
+DROP POLICY IF EXISTS "avatars_delete_auth"   ON storage.objects;
+
 CREATE POLICY "avatars_select_public" ON storage.objects
   FOR SELECT TO public
   USING (bucket_id = 'avatars');

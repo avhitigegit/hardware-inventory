@@ -10,12 +10,17 @@
 --   7 categories, 5 suppliers, 20 products, 6 customers
 --   7 GRN purchases, 12 sales (CASH / CREDIT / SPLIT + discounts)
 --   4 stock adjustments, 2 customer payments, 2 supplier payments
+--   2 returns (1 CASH_REFUND, 1 CREDIT_ADJUSTMENT)
 --
 -- FINAL LOW-STOCK ITEMS (for dashboard testing):
 --   Makita Drill 750W  :  7 units  (reorder 10) ← LOW STOCK
 --   PVC Pipe 1/2"      : 45 units  (reorder 50) ← LOW STOCK
 --   Sandpaper 80 Grit  : 88 units  (reorder 90) ← LOW STOCK
 --   Safety Helmet      :  8 units  (reorder 10) ← LOW STOCK
+--
+-- RETURNS (after seed):
+--   padlock stock +1 (CASH_REFUND walk-in)   → 23 units
+--   gloves  stock +2 (CREDIT_ADJUSTMENT)     → 52 units  | Anura credit -300
 -- ============================================================
 
 DO $$
@@ -53,11 +58,14 @@ DECLARE
   sale5  BIGINT; sale6  BIGINT; sale7  BIGINT; sale8  BIGINT;
   sale9  BIGINT; sale10 BIGINT; sale11 BIGINT; sale12 BIGINT;
 
+  -- Returns
+  ret1 BIGINT; ret2 BIGINT;
+
 BEGIN
 
-  SELECT id INTO admin_id FROM users WHERE role = 'ADMIN' AND is_active = true LIMIT 1;
+  SELECT id INTO admin_id FROM users WHERE role = 'ADMIN' AND status = 'ACTIVE' LIMIT 1;
   IF admin_id IS NULL THEN
-    RAISE EXCEPTION 'No active ADMIN user found. Insert one into the users table first.';
+    RAISE EXCEPTION 'No active ADMIN user found (role=ADMIN, status=ACTIVE). Insert one into the users table first.';
   END IF;
 
 
@@ -389,12 +397,12 @@ BEGIN
   UPDATE products SET stock_quantity = stock_quantity + 5 WHERE id = prod_putty;
 
   -- ==========================================================
-  -- EXPECTED FINAL STOCK:
+  -- EXPECTED FINAL STOCK (after sales + adjustments + returns):
   --   drill=7(LOW)  grinder=10  hammer=21  tapemeasure=22
   --   hacksaw=35    pvc=45(LOW) elbow=130  wire=150
   --   mcb=24        socket=39   sandpaper=88(LOW) brush=35
-  --   screw=600     nail=20     padlock=22 tape=48
-  --   putty=60      paint=37    helmet=8(LOW) gloves=50
+  --   screw=600     nail=20     padlock=23 tape=48
+  --   putty=60      paint=37    helmet=8(LOW) gloves=52
   -- ==========================================================
 
 
@@ -433,6 +441,31 @@ BEGIN
   UPDATE suppliers SET credit_balance = credit_balance - 2500 WHERE id = sup_sathosa;
   -- Sathosa remaining: 5250 - 2500 = Rs. 2,750
 
+
+  -- ==========================================================
+  -- RETURNS (2)
+  -- No trigger — stock is manually restored here.
+  -- ==========================================================
+
+  -- Return 1: Anura Builders returns 2 gloves (from Sale 7) — CREDIT_ADJUSTMENT
+  -- Reduces Anura's credit balance: 5350 - 300 = Rs. 5,050
+  -- gloves stock: 50 + 2 = 52
+  INSERT INTO returns (sale_id,customer_id,total_return_amount,return_method,notes,created_by,created_at)
+    VALUES (sale7, cust_anura, 300, 'CREDIT_ADJUSTMENT', '2 pairs — wrong size, exchanged', admin_id, NOW()-INTERVAL '7 days') RETURNING id INTO ret1;
+  INSERT INTO return_items (return_id,product_id,quantity,unit_price,total_price) VALUES
+    (ret1, prod_gloves, 2, 150, 300);
+  UPDATE products  SET stock_quantity = stock_quantity + 2   WHERE id = prod_gloves;
+  UPDATE customers SET credit_balance = credit_balance - 300 WHERE id = cust_anura;
+
+  -- Return 2: Walk-in returns 1 padlock (from Sale 1) — CASH_REFUND
+  -- No customer credit change (walk-in, cash refund issued)
+  -- padlock stock: 22 + 1 = 23
+  INSERT INTO returns (sale_id,customer_id,total_return_amount,return_method,notes,created_by,created_at)
+    VALUES (sale1, NULL, 280, 'CASH_REFUND', 'Wrong size, cash refunded at counter', admin_id, NOW()-INTERVAL '38 days') RETURNING id INTO ret2;
+  INSERT INTO return_items (return_id,product_id,quantity,unit_price,total_price) VALUES
+    (ret2, prod_padlock, 1, 280, 280);
+  UPDATE products SET stock_quantity = stock_quantity + 1 WHERE id = prod_padlock;
+
 END $$;
 
 
@@ -469,3 +502,15 @@ FROM sales;
 SELECT c.name AS category, COUNT(p.id) AS product_count
 FROM categories c LEFT JOIN products p ON p.category_id = c.id
 GROUP BY c.name ORDER BY c.name;
+
+-- Returns summary
+SELECT
+  r.id,
+  r.return_method,
+  r.total_return_amount,
+  r.notes,
+  c.name AS customer,
+  r.created_at
+FROM returns r
+LEFT JOIN customers c ON c.id = r.customer_id
+ORDER BY r.created_at;
