@@ -1,5 +1,8 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import { zeroPad } from '@/lib/utils'
+
+// Disable all hyphenation — prevents words breaking mid-line across all text nodes
+Font.registerHyphenationCallback((word) => [word])
 
 // Page: 400pt wide, padding 24 each side → 352pt usable content
 const PAD = 24
@@ -271,8 +274,7 @@ export default function SaleReceipt({ sale }: { sale: any }) {
   const change   = sale.payment_type === 'CASH' ? Math.max(0, paid - total) : 0
 
   return (
-    // hyphenationCallback prevents word-breaking / hyphenation in all text nodes
-    <Document hyphenationCallback={(word) => [word]}>
+    <Document>
       <Page size={[400, 840]} style={s.page}>
 
         {/* ── Shop header ── */}
