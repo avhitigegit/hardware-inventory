@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 
 const SESSION_DURATION_MS = 12 * 60 * 60 * 1000 // 12 hours
-export { SESSION_DURATION_MS }
 
 export async function signIn(
   email: string,

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { getCurrentUser, SESSION_DURATION_MS } from '@/actions/auth.actions'
+import { getCurrentUser } from '@/actions/auth.actions'
+
+const SESSION_DURATION_MS = 12 * 60 * 60 * 1000
 import { UserProvider } from '@/components/layout/UserProvider'
 import Sidebar from '@/components/layout/Sidebar'
 import TopNav from '@/components/layout/TopNav'
