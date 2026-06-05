@@ -29,8 +29,9 @@ type LoginFormData = z.infer<typeof loginSchema>
 function LoginForm() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const searchParams = useSearchParams()
+  const searchParams  = useSearchParams()
   const isDeactivated = searchParams.get('deactivated') === 'true'
+  const isExpired     = searchParams.get('reason') === 'expired'
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -56,9 +57,14 @@ function LoginForm() {
         <p className="text-sm text-muted-foreground">Sign in to your account</p>
       </CardHeader>
       <CardContent>
+        {isExpired && (
+          <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+            ⏱ Your session has expired after 12 hours. Please log in again.
+          </div>
+        )}
         {isDeactivated && (
           <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
-            Your session has expired. Please log in again.
+            Your account has been deactivated. Contact the administrator.
           </div>
         )}
         {serverError && (

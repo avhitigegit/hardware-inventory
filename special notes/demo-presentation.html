@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NUVI Engineering — Smart Inventory Management System</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --navy:   #0d1f3c;
+      --blue:   #1a3a6b;
+      --orange: #f97316;
+      --gold:   #f59e0b;
+      --green:  #16a34a;
+      --red:    #dc2626;
+      --light:  #f0f4f8;
+      --muted:  #64748b;
+      --white:  #ffffff;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #cbd5e1;
+      color: #1a202c;
+    }
+
+    .slide {
+      width: 297mm;
+      min-height: 210mm;
+      background: white;
+      margin: 24px auto;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ════ SLIDE 1 — COVER ════ */
+    .slide-cover {
+      background: var(--navy);
+      min-height: 210mm;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .cbg { position: absolute; border-radius: 50%; }
+    .cbg.c1 { width: 500px; height: 500px; background: var(--orange); opacity: 0.06; top: -150px; right: -100px; }
+    .cbg.c2 { width: 300px; height: 300px; background: #3b82f6; opacity: 0.07; bottom: -80px; left: -60px; }
+    .cbg.c3 { width: 180px; height: 180px; background: var(--gold); opacity: 0.05; top: 40px; left: 200px; }
+
+    .cover-top {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 44px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      position: relative; z-index: 2;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo-box {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--orange), var(--gold));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px;
+    }
+    .logo-wrap .lname { font-size: 15px; font-weight: 800; color: white; }
+    .logo-wrap .lname em { color: var(--orange); font-style: normal; }
+    .logo-wrap .lsub { font-size: 9px; color: rgba(255,255,255,0.45); margin-top: 1px; letter-spacing: 0.3px; }
+    .cover-badge {
+      background: rgba(249,115,22,0.15);
+      border: 1px solid rgba(249,115,22,0.4);
+      color: #fed7aa;
+      font-size: 10px; font-weight: 700;
+      padding: 5px 14px; border-radius: 999px;
+      letter-spacing: 0.8px; text-transform: uppercase;
+    }
+
+    .cover-main {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center; padding: 28px 60px;
+      position: relative; z-index: 2;
+    }
+    .cover-eyebrow {
+      font-size: 11px; font-weight: 700; color: var(--orange);
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px;
+    }
+    .cover-main h1 {
+      font-size: 44px; font-weight: 900; color: white;
+      line-height: 1.1; margin-bottom: 16px; letter-spacing: -1px;
+    }
+    .cover-main h1 .hl { color: var(--orange); }
+    .cover-main .desc {
+      font-size: 14px; color: rgba(255,255,255,0.62);
+      line-height: 1.8; max-width: 500px; margin-bottom: 26px;
+    }
+    .cover-chips { display: flex; gap: 9px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+    .chip {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: rgba(255,255,255,0.78);
+      font-size: 11px; font-weight: 500;
+      padding: 6px 13px; border-radius: 999px;
+    }
+    .chip.hot {
+      background: rgba(249,115,22,0.18);
+      border-color: rgba(249,115,22,0.4);
+      color: #fed7aa;
+    }
+
+    .cover-bottom {
+      padding: 14px 44px;
+      background: rgba(0,0,0,0.25);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      display: flex; justify-content: space-between; align-items: center;
+      position: relative; z-index: 2;
+    }
+    .cover-bottom .cinfo { display: flex; gap: 22px; }
+    .cover-bottom .cinfo span { font-size: 11px; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 5px; }
+    .cover-bottom .cinfo span b { color: rgba(255,255,255,0.82); }
+    .cover-bottom .pg { font-size: 10px; color: rgba(255,255,255,0.22); }
+
+    /* ════ SHARED HEADER ════ */
+    .sh {
+      background: var(--navy);
+      padding: 17px 40px;
+      display: flex; align-items: center; gap: 13px;
+      flex-shrink: 0; position: relative; overflow: hidden;
+    }
+    .sh::after {
+      content: ''; position: absolute;
+      right: -40px; top: -40px;
+      width: 120px; height: 120px;
+      background: var(--orange); opacity: 0.07; border-radius: 50%;
+    }
+    .sh-ic {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, var(--orange), var(--gold));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(249,115,22,0.35);
+    }
+    .sh-tx h2 { font-size: 21px; font-weight: 800; color: white; }
+    .sh-tx p  { font-size: 11px; color: rgba(255,255,255,0.52); margin-top: 2px; }
+    .sh-num   { margin-left: auto; font-size: 11px; color: rgba(255,255,255,0.22); font-weight: 600; }
+
+    .body { flex: 1; padding: 22px 40px; }
+
+    /* ════ SLIDE 2 — PROBLEM ════ */
+    .prob-intro {
+      background: linear-gradient(90deg, #fff5f5, #fff8f0);
+      border-left: 4px solid var(--red);
+      border-radius: 0 10px 10px 0;
+      padding: 11px 16px; margin-bottom: 16px;
+      font-size: 12.5px; color: #7f1d1d; font-weight: 500; line-height: 1.65;
+    }
+    .prob-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 11px; }
+    .prob-card {
+      background: white; border: 1.5px solid #fecaca;
+      border-radius: 12px; padding: 15px;
+      position: relative; overflow: hidden;
+    }
+    .prob-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--red), #f87171);
+    }
+    .prob-card .pi { font-size: 25px; margin-bottom: 7px; display: block; }
+    .prob-card h3  { font-size: 12.5px; font-weight: 700; color: var(--red); margin-bottom: 5px; }
+    .prob-card p   { font-size: 11px; color: var(--muted); line-height: 1.6; }
+    .prob-card .impact {
+      margin-top: 7px; font-size: 10px; font-weight: 700;
+      color: #ef4444; background: #fff5f5;
+      padding: 3px 8px; border-radius: 4px; display: inline-block;
+    }
+
+    /* ════ SLIDE 3 — SOLUTION ════ */
+    .sol-wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 22px; }
+    .sol-left h3 { font-size: 18px; font-weight: 800; color: var(--navy); line-height: 1.3; margin-bottom: 9px; }
+    .sol-left p  { font-size: 12px; color: var(--muted); line-height: 1.75; margin-bottom: 13px; }
+    .sol-list { list-style: none; }
+    .sol-list li {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 7px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;
+    }
+    .sol-list li .dot {
+      width: 22px; height: 22px; background: #dcfce7; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; flex-shrink: 0; margin-top: 1px;
+    }
+    .sol-list li b { color: var(--navy); }
+    .sol-list li span { color: var(--muted); }
+
+    .sol-right {
+      background: linear-gradient(160deg, var(--navy) 0%, var(--blue) 100%);
+      border-radius: 16px; padding: 22px; color: white;
+    }
+    .sol-right h4 {
+      font-size: 11px; font-weight: 700; color: #fed7aa;
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+    }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .stat-box {
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 13px 10px; text-align: center;
+    }
+    .stat-box .n { font-size: 24px; font-weight: 900; color: var(--orange); }
+    .stat-box .l { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 3px; line-height: 1.3; }
+    .sol-quote {
+      margin-top: 13px; background: rgba(249,115,22,0.15); border-radius: 10px;
+      padding: 12px; font-size: 11px; color: #fed7aa;
+      line-height: 1.6; text-align: center; font-style: italic;
+    }
+
+    /* ════ SLIDE 4 — KEY FEATURES ════ */
+    .feat-intro {
+      background: linear-gradient(90deg, #eff6ff, #f5f3ff);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 10px 10px 0;
+      padding: 10px 15px; margin-bottom: 14px;
+      font-size: 12px; color: #1e3a8a; line-height: 1.6;
+    }
+    .feat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 11px; }
+    .feat-card {
+      background: white; border: 1.5px solid #e2e8f0;
+      border-radius: 11px; padding: 14px;
+      position: relative; overflow: hidden;
+    }
+    .feat-card::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 0; right: 0; height: 3px;
+    }
+    .feat-card.c-navy::after   { background: var(--navy); }
+    .feat-card.c-orange::after { background: var(--orange); }
+    .feat-card.c-green::after  { background: var(--green); }
+    .feat-card.c-gold::after   { background: var(--gold); }
+    .feat-card.c-red::after    { background: var(--red); }
+    .feat-card.c-purple::after { background: #7c3aed; }
+    .feat-card.c-teal::after   { background: #0891b2; }
+    .feat-card.c-pink::after   { background: #db2777; }
+    .feat-card.c-indigo::after { background: #4f46e5; }
+    .feat-card.c-maroon::after { background: #9f1239; }
+
+    .feat-card .fi { font-size: 22px; margin-bottom: 7px; }
+    .feat-card h3  { font-size: 12px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+    .feat-card p   { font-size: 10.5px; color: var(--muted); line-height: 1.6; }
+    .feat-card .ftag {
+      display: inline-block; margin-top: 6px;
+      font-size: 9px; font-weight: 700; padding: 2px 7px;
+      border-radius: 4px; letter-spacing: 0.4px;
+    }
+    .ftag-orange { background: #fff7ed; color: var(--orange); }
+    .ftag-green  { background: #dcfce7; color: var(--green); }
+    .ftag-blue   { background: #eff6ff; color: #2563eb; }
+
+    /* ════ SLIDE 5 — REPORTS ════ */
+    .rep-intro {
+      background: linear-gradient(90deg, #eff6ff, #f5f3ff);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 10px 10px 0;
+      padding: 11px 16px; margin-bottom: 16px;
+      font-size: 12px; color: #1e3a8a; line-height: 1.6;
+    }
+    .rep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .rep-card {
+      background: white; border: 1.5px solid #e2e8f0;
+      border-radius: 12px; padding: 15px;
+      display: flex; gap: 13px; align-items: flex-start;
+    }
+    .rep-icon {
+      width: 46px; height: 46px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 21px; flex-shrink: 0;
+    }
+    .rep-card h3 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .rep-card p  { font-size: 11px; color: var(--muted); line-height: 1.65; margin-bottom: 7px; }
+    .tag-pdf  { display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:var(--red);font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.4px; }
+    .tag-grn  { display:inline-flex;align-items:center;gap:4px;background:#dcfce7;color:var(--green);font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.4px; }
+    .tag-live { display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#2563eb;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.4px; }
+
+    /* ════ SLIDE 6 — USER ROLES ════ */
+    .roles-intro {
+      background: linear-gradient(90deg, #f0fdf4, #eff6ff);
+      border-left: 4px solid var(--green);
+      border-radius: 0 10px 10px 0;
+      padding: 11px 16px; margin-bottom: 16px;
+      font-size: 12px; color: #14532d; line-height: 1.6;
+    }
+    .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .role-card { border-radius: 13px; padding: 18px; }
+    .role-admin    { background:#fff1f2; border:1.5px solid #fecdd3; }
+    .role-owner    { background:#eff6ff; border:1.5px solid #bfdbfe; }
+    .role-cashier  { background:#f0fdf4; border:1.5px solid #bbf7d0; }
+    .role-stkeeper { background:#fefce8; border:1.5px solid #fde68a; }
+
+    .rbadge {
+      display:inline-block; font-size:9px; font-weight:800;
+      padding:3px 10px; border-radius:999px;
+      letter-spacing:.8px; text-transform:uppercase; margin-bottom:7px;
+    }
+    .role-admin    .rbadge { background:var(--red); color:white; }
+    .role-owner    .rbadge { background:#2563eb; color:white; }
+    .role-cashier  .rbadge { background:var(--green); color:white; }
+    .role-stkeeper .rbadge { background:#d97706; color:white; }
+
+    .role-card h3       { font-size:14px; font-weight:700; color:var(--navy); margin-bottom:4px; }
+    .role-card .rdesc   { font-size:11px; color:var(--muted); margin-bottom:9px; line-height:1.55; }
+    .role-card ul       { list-style:none; }
+    .role-card ul li    {
+      font-size:11px; color:#374151;
+      padding:3.5px 0; display:flex; align-items:flex-start; gap:7px;
+      border-bottom:1px solid rgba(0,0,0,0.04);
+    }
+    .role-card ul li::before { content:'›'; color:var(--orange); font-weight:900; flex-shrink:0; }
+    .role-card .rnote {
+      margin-top:9px;
+      background:rgba(0,0,0,0.04); border-radius:7px;
+      padding:7px 10px; font-size:10px; color:var(--muted);
+      line-height:1.5; font-style:italic;
+    }
+
+    /* ════ SLIDE 7 — WHO NEEDS THIS ════ */
+    .who-top {
+      background: linear-gradient(90deg, #fff7ed, #fefce8);
+      border-left: 4px solid var(--orange);
+      border-radius: 0 10px 10px 0;
+      padding: 11px 16px; margin-bottom: 14px;
+      font-size: 12px; color: #7c2d12; line-height: 1.6;
+    }
+    .who-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 11px; margin-bottom: 13px; }
+    .who-card {
+      background: white; border: 1.5px solid #e2e8f0;
+      border-radius: 11px; padding: 13px;
+    }
+    .who-card.hot { border-color: var(--orange); background: #fff7ed; }
+    .hot-lbl {
+      display:inline-block; background:var(--orange); color:white;
+      font-size:8px; font-weight:800; padding:2px 7px; border-radius:4px;
+      letter-spacing:.5px; margin-bottom:5px;
+    }
+    .who-card .wi    { font-size:24px; margin-bottom:5px; display:block; }
+    .who-card h3     { font-size:12px; font-weight:700; color:var(--navy); margin-bottom:4px; }
+    .who-card p      { font-size:10.5px; color:var(--muted); line-height:1.55; }
+
+    .who-custom {
+      background: linear-gradient(90deg, var(--navy), var(--blue));
+      border-radius: 11px; padding: 14px 20px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .who-custom .wc-icon { font-size: 26px; flex-shrink: 0; }
+    .who-custom h4 { font-size: 13px; font-weight: 700; color: white; margin-bottom: 4px; }
+    .who-custom p  { font-size: 11px; color: rgba(255,255,255,0.68); line-height: 1.6; }
+    .who-custom .wc-tag {
+      flex-shrink: 0;
+      background: rgba(249,115,22,0.2); border: 1px solid rgba(249,115,22,0.4);
+      color: #fed7aa; font-size: 10px; font-weight: 700;
+      padding: 5px 12px; border-radius: 999px; white-space: nowrap;
+    }
+
+    /* ════ SLIDE 8 — COMPLETE PACKAGE ════ */
+    .pkg-wrap { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 20px; }
+    .pkg-left h3 { font-size:17px; font-weight:800; color:var(--navy); margin-bottom:6px; }
+    .pkg-left p  { font-size:12px; color:var(--muted); line-height:1.7; margin-bottom:14px; }
+    .hw-list { list-style:none; }
+    .hw-list li {
+      display:flex; align-items:center; gap:11px;
+      padding:9px 11px; border-radius:8px;
+      background:var(--light); margin-bottom:6px; font-size:12px;
+    }
+    .hw-list li .hw-ic { font-size:19px; flex-shrink:0; }
+    .hw-list li .hw-nm { font-weight:600; color:var(--navy); font-size:12px; }
+    .hw-list li .hw-sp { font-size:10px; color:var(--muted); }
+    .hw-list li .hw-ck {
+      margin-left:auto; width:20px; height:20px;
+      background:#dcfce7; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; color:var(--green);
+    }
+
+    .pkg-right {
+      background: linear-gradient(160deg, var(--navy), var(--blue));
+      border-radius: 14px; padding: 22px; color: white;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .pkg-right h4 {
+      font-size:11px; font-weight:700; color:#fed7aa;
+      text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;
+    }
+    .sw-list { list-style:none; margin-bottom:14px; }
+    .sw-list li {
+      display:flex; align-items:center; gap:8px;
+      font-size:11px; color:rgba(255,255,255,.85);
+      padding:4px 0; border-bottom:1px solid rgba(255,255,255,.07);
+    }
+    .sw-list li::before { content:'✓'; color:var(--orange); font-weight:900; flex-shrink:0; }
+    .sup-box {
+      background:rgba(249,115,22,.15); border:1px solid rgba(249,115,22,.35);
+      border-radius:10px; padding:12px; text-align:center;
+    }
+    .sup-box .sv { font-size:28px; font-weight:900; color:var(--orange); }
+    .sup-box .sl { font-size:11px; color:rgba(255,255,255,.68); margin-top:2px; }
+
+    /* ════ SLIDE 9 — PRICING ════ */
+    .price-intro { text-align:center; margin-bottom:18px; }
+    .price-intro h3 { font-size:16px; font-weight:800; color:var(--navy); margin-bottom:4px; }
+    .price-intro p  { font-size:12px; color:var(--muted); }
+
+    .price-cards { display:grid; grid-template-columns:1fr 1.4fr 1fr; gap:15px; margin-bottom:16px; }
+    .pc { border-radius:15px; padding:21px; text-align:center; position:relative; }
+    .pc-trial   { background:#f8fafc; border:2px solid #e2e8f0; }
+    .pc-main    { background:linear-gradient(155deg,var(--navy),var(--blue)); color:white; transform:scale(1.02); box-shadow:0 12px 40px rgba(13,31,60,.35); }
+    .pc-visit   { background:#fff7ed; border:2px solid #fed7aa; }
+    .ribbon {
+      position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(90deg,var(--orange),var(--gold));
+      color:white; font-size:9px; font-weight:800;
+      padding:4px 16px; border-radius:999px;
+      letter-spacing:.8px; text-transform:uppercase; white-space:nowrap;
+    }
+    .pc h3 { font-size:13px; font-weight:700; margin-bottom:11px; }
+    .pc-main h3 { color:#fed7aa; }
+    .pc-trial h3, .pc-visit h3 { color:var(--navy); }
+    .pc .big-price { font-size:30px; font-weight:900; line-height:1; margin-bottom:4px; }
+    .pc-main  .big-price { color:var(--orange); }
+    .pc-trial .big-price { color:var(--green); }
+    .pc-visit .big-price { color:var(--navy); }
+    .pc .psub { font-size:11px; margin-bottom:13px; }
+    .pc-main .psub  { color:rgba(255,255,255,.6); }
+    .pc-trial .psub, .pc-visit .psub { color:var(--muted); }
+    .pc ul { list-style:none; text-align:left; }
+    .pc ul li {
+      font-size:11px; padding:4px 0;
+      display:flex; align-items:flex-start; gap:8px;
+      border-bottom:1px solid rgba(0,0,0,.05);
+    }
+    .pc-main ul li { color:rgba(255,255,255,.85); border-color:rgba(255,255,255,.07); }
+    .pc ul li::before      { content:'✓'; color:var(--green); font-weight:900; flex-shrink:0; }
+    .pc-main ul li::before { color:var(--orange); }
+
+    .neg-banner {
+      background:linear-gradient(90deg,#f0fdf4,#dcfce7);
+      border:1.5px solid #86efac; border-radius:11px;
+      padding:13px 18px; display:flex; align-items:center; gap:13px;
+      font-size:12px; color:#14532d;
+    }
+    .neg-banner .ni { font-size:22px; flex-shrink:0; }
+
+    /* ════ SLIDE 10 — CTA ════ */
+    .slide-cta {
+      background: var(--navy);
+      min-height: 210mm;
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+    }
+    .cta-bg { position:absolute; border-radius:50%; }
+    .cta-bg.b1 { width:420px;height:420px;background:var(--orange);opacity:.05;bottom:-100px;right:-90px; }
+    .cta-bg.b2 { width:260px;height:260px;background:#3b82f6;opacity:.07;top:-60px;left:-40px; }
+
+    .cta-top {
+      padding:18px 44px; border-bottom:1px solid rgba(255,255,255,.08);
+      position:relative; z-index:2;
+    }
+    .cta-logo { display:flex;align-items:center;gap:10px; }
+    .cta-logo .clb {
+      width:34px;height:34px;
+      background:linear-gradient(135deg,var(--orange),var(--gold));
+      border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;
+    }
+    .cta-logo .clname  { font-size:15px;font-weight:800;color:white; }
+    .cta-logo .clname em { color:var(--orange);font-style:normal; }
+    .cta-logo .clsub   { font-size:9px;color:rgba(255,255,255,.42);margin-top:1px; }
+
+    .cta-body {
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      text-align:center; padding:28px 60px;
+      position:relative; z-index:2;
+    }
+    .cta-eyebrow { font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:2px;margin-bottom:13px; }
+    .cta-body h2 { font-size:38px;font-weight:900;color:white;line-height:1.1;margin-bottom:13px;letter-spacing:-.5px; }
+    .cta-body h2 span { color:var(--orange); }
+    .cta-body .csub { font-size:14px;color:rgba(255,255,255,.6);max-width:450px;line-height:1.75;margin-bottom:26px; }
+    .trial-pill {
+      display:inline-flex;align-items:center;gap:8px;
+      background:rgba(249,115,22,.18); border:1.5px solid rgba(249,115,22,.45);
+      border-radius:999px; padding:10px 24px;
+      color:#fed7aa; font-size:13px; font-weight:700; margin-bottom:28px;
+    }
+    .contact-row { display:flex;gap:14px;justify-content:center;margin-bottom:18px; }
+    .c-box {
+      background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+      border-radius:13px; padding:16px 20px; min-width:130px;
+    }
+    .c-box .cbi { font-size:21px;margin-bottom:5px; }
+    .c-box .cbl { font-size:9px;color:rgba(255,255,255,.42);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px; }
+    .c-box .cbv { font-size:13px;font-weight:700;color:white; }
+
+    .cta-foot {
+      padding:13px 44px; background:rgba(0,0,0,.2);
+      border-top:1px solid rgba(255,255,255,.06);
+      text-align:center; font-size:10px;
+      color:rgba(255,255,255,.22); position:relative; z-index:2;
+    }
+
+    @media print {
+      body { background:white; }
+      .slide { margin:0; box-shadow:none; page-break-after:always; width:297mm; min-height:210mm; }
+    }
+    @page { size:A4 landscape; margin:0; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ SLIDE 1 — COVER ══════════════ -->
+<div class="slide slide-cover">
+  <div class="cbg c1"></div><div class="cbg c2"></div><div class="cbg c3"></div>
+
+  <div class="cover-top">
+    <div class="logo-wrap">
+      <div class="logo-box">📦</div>
+      <div>
+        <div class="lname">NUVI <em>Engineering</em></div>
+        <div class="lsub">PVT LTD</div>
+      </div>
+    </div>
+    <div class="cover-badge">✦ Official Demo Presentation</div>
+  </div>
+
+  <div class="cover-main">
+    <div class="cover-eyebrow">Presented by NUVI Engineering PVT LTD</div>
+    <h1>Run Your Shop<br/>The <span class="hl">Smart Way</span></h1>
+    <p class="desc">
+      A complete, cloud-powered Inventory Management System designed
+      specifically for hardware shops, trade businesses, and retail stores
+      across Sri Lanka. Manage your stock, billing, purchases, and
+      reports — all from one simple screen.
+    </p>
+    <div class="cover-chips">
+      <span class="chip">📦 Stock Management</span>
+      <span class="chip">🛒 POS Billing</span>
+      <span class="chip">📊 Reports &amp; PDF</span>
+      <span class="chip hot">🎁 30 Days Free Trial</span>
+      <span class="chip">🔐 Role-Based Access</span>
+      <span class="chip">🕵️ Full Audit Log</span>
+    </div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="cinfo">
+      <span>📞 <b>077 662 2922</b></span>
+      <span>✉️ <b>info@nuvi.lk</b></span>
+      <span>📍 Colombo, Sri Lanka</span>
+    </div>
+    <span class="pg">Slide 1 of 10</span>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 2 — THE PROBLEM ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">⚠️</div>
+    <div class="sh-tx"><h2>The Problem Today</h2><p>Real challenges that cost your business time and money every single day</p></div>
+    <span class="sh-num">02 / 10</span>
+  </div>
+  <div class="body">
+    <div class="prob-intro">
+      Most hardware and trade shops across Sri Lanka are still managing their business with paper books, handwritten receipts, and guesswork.
+      Every day this continues, the business is losing money, missing sales opportunities, and falling behind competitors who have moved to digital.
+      Here is what really happens on the shop floor — and the real cost of each problem:
+    </div>
+    <div class="prob-grid">
+
+      <div class="prob-card">
+        <span class="pi">📒</span>
+        <h3>Stock Tracked in Paper Books</h3>
+        <p>Items are written by hand in ledgers or recorded on scraps of paper. When a customer asks "do you have this item?" — the staff has to physically walk to the store and check. This wastes time, frustrates customers, and causes queues to build up at the counter.</p>
+        <span class="impact">⏱ Wastes 30–60 minutes every day</span>
+      </div>
+
+      <div class="prob-card">
+        <span class="pi">❓</span>
+        <h3>No Warning Before Stock Runs Out</h3>
+        <p>The only time you discover that an item is finished is when a customer asks for it — and by then it is already a lost sale. There is no system giving an early warning. Items run out silently, and customers go to a competitor instead. This happens multiple times a day without anyone realizing it.</p>
+        <span class="impact">💸 Revenue lost silently every week</span>
+      </div>
+
+      <div class="prob-card">
+        <span class="pi">🧾</span>
+        <h3>Handwritten Bills and Receipts</h3>
+        <p>Every invoice is written by hand — slow to produce, easy to make mistakes on, and looks unprofessional to customers. There is no permanent digital record of what was sold, to whom, and on which date. Billing disputes are impossible to resolve. Tax audits become a nightmare.</p>
+        <span class="impact">😤 Disputes &amp; audit problems</span>
+      </div>
+
+      <div class="prob-card">
+        <span class="pi">📊</span>
+        <h3>No Reports — Running Blind</h3>
+        <p>Business owners cannot answer basic questions: "What was my best selling product last month?" or "How much profit did I make this week?" There is no data. All purchasing decisions are based on memory and gut feeling — leading to over-stocking slow items and running short on fast-moving ones.</p>
+        <span class="impact">📉 Wrong buying decisions cost money</span>
+      </div>
+
+      <div class="prob-card">
+        <span class="pi">🔑</span>
+        <h3>No Staff Access Control</h3>
+        <p>Every staff member can see everything — supplier prices, profit margins, and business financials. Cashiers can change prices without authorization. There is no record of who made a sale, who deleted a product, or who changed a price. This creates opportunities for manipulation and theft that go undetected.</p>
+        <span class="impact">🚨 Theft &amp; unauthorized changes</span>
+      </div>
+
+      <div class="prob-card">
+        <span class="pi">📦</span>
+        <h3>Purchases Not Properly Recorded</h3>
+        <p>When stock arrives from a supplier, it is noted on a paper or ignored entirely. There is no formal GRN document, no stock update trail, and no way to verify if the correct quantity was received. Supplier disputes over short deliveries cannot be resolved because there is no proof of what was agreed.</p>
+        <span class="impact">📦 Supplier disputes go unresolved</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 3 — SOLUTION ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">✅</div>
+    <div class="sh-tx"><h2>Introducing NUVI Inventory System</h2><p>One powerful platform that replaces notebooks, Excel, and guesswork</p></div>
+    <span class="sh-num">03 / 10</span>
+  </div>
+  <div class="body">
+    <div class="sol-wrap">
+      <div class="sol-left">
+        <h3>A complete digital business tool built for Sri Lankan trade shops</h3>
+        <p>
+          The NUVI Inventory Management System is a modern, browser-based platform that manages
+          your entire business from one screen. It runs on any computer with an internet connection,
+          updates stock in real time, and gives you the reports and insights you need to make smarter
+          decisions every single day. No technical knowledge required — if you can use WhatsApp, you
+          can use this system. It is built for the way Sri Lankan shops actually work.
+        </p>
+        <ul class="sol-list">
+          <li><span class="dot">✓</span><div><b>Real-time stock levels</b> — <span>always accurate, updated instantly on every sale and purchase</span></div></li>
+          <li><span class="dot">✓</span><div><b>Automatic low stock alerts</b> — <span>get warned before you run out, not after</span></div></li>
+          <li><span class="dot">✓</span><div><b>Fast POS billing terminal</b> — <span>serve customers in seconds with professional printed receipts</span></div></li>
+          <li><span class="dot">✓</span><div><b>GRN for every purchase</b> — <span>stock updates automatically when delivery is recorded</span></div></li>
+          <li><span class="dot">✓</span><div><b>5 types of business reports</b> — <span>daily, monthly, top products, low stock, cash summary</span></div></li>
+          <li><span class="dot">✓</span><div><b>Role-based staff logins</b> — <span>each staff member sees only what their role requires</span></div></li>
+          <li><span class="dot">✓</span><div><b>Full audit trail</b> — <span>every action recorded permanently — who did what and when</span></div></li>
+          <li><span class="dot">✓</span><div><b>Returns &amp; stock adjustments</b> — <span>handle properly with records, not on paper</span></div></li>
+        </ul>
+      </div>
+      <div class="sol-right">
+        <h4>System at a glance</h4>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="n">4</div><div class="l">User Role Types</div></div>
+          <div class="stat-box"><div class="n">5</div><div class="l">Report Types</div></div>
+          <div class="stat-box"><div class="n">PDF</div><div class="l">All docs downloadable</div></div>
+          <div class="stat-box"><div class="n">GRN</div><div class="l">Auto purchase records</div></div>
+          <div class="stat-box"><div class="n">POS</div><div class="l">Fast billing terminal</div></div>
+          <div class="stat-box"><div class="n">100</div><div class="l">Users supported</div></div>
+        </div>
+        <div class="sol-quote">
+          "Stop running your business from memory and paper books — let the system do the work so you can focus on growing."
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 4 — KEY FEATURES ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">⚡</div>
+    <div class="sh-tx"><h2>Key Features</h2><p>Everything your business needs — built in and ready to use from day one</p></div>
+    <span class="sh-num">04 / 10</span>
+  </div>
+  <div class="body">
+    <div class="feat-intro">
+      The NUVI system is not just a stock list — it is a complete business management tool. Every feature below is already built, tested, and ready.
+      There is nothing extra to buy or configure. You log in and start using it immediately.
+    </div>
+    <div class="feat-grid">
+
+      <div class="feat-card c-navy">
+        <div class="fi">🏪</div>
+        <h3>Live Business Dashboard</h3>
+        <p>The first screen you see when you log in shows all the numbers that matter most — today's total sales, total purchase value, number of low stock items, and active users. You get a complete picture of your business health in seconds without opening a single report.</p>
+        <span class="ftag ftag-blue">REAL-TIME</span>
+      </div>
+
+      <div class="feat-card c-orange">
+        <div class="fi">📦</div>
+        <h3>Product &amp; Inventory Management</h3>
+        <p>Add and manage every product in your shop with a full set of details — product name, category, barcode, cost price, selling price, current stock quantity, minimum reorder level, and linked supplier. Search by name or category in under a second. No more walking to the store to check if an item is available.</p>
+        <span class="ftag ftag-orange">UNLIMITED PRODUCTS</span>
+      </div>
+
+      <div class="feat-card c-red">
+        <div class="fi">🔔</div>
+        <h3>Automatic Low Stock Alerts</h3>
+        <p>Every product has a minimum reorder level you set. The moment stock drops to or below that level, a red alert badge automatically appears on the Products menu. You are warned before the item runs out — not after. This means you can reorder in time and never lose a sale due to empty stock again.</p>
+        <span class="ftag ftag-orange">AUTO ALERT</span>
+      </div>
+
+      <div class="feat-card c-green">
+        <div class="fi">🛒</div>
+        <h3>POS Billing Terminal</h3>
+        <p>A dedicated, high-speed billing screen designed for counter staff. Search for a product by name, add it to the cart, adjust quantity, apply a discount if needed, accept payment, and print a professional receipt — all in under 30 seconds. Supports multiple items per bill. Cash drawer opens automatically on sale completion.</p>
+        <span class="ftag ftag-green">FAST CHECKOUT</span>
+      </div>
+
+      <div class="feat-card c-gold">
+        <div class="fi">📋</div>
+        <h3>Purchases &amp; GRN Documents</h3>
+        <p>Record every stock delivery from every supplier in full detail — items received, quantities, unit cost, and total purchase value. The system automatically updates stock levels when a purchase is entered. A professional Goods Received Note (GRN) document is generated instantly and can be downloaded as a PDF for your records or to give to the supplier.</p>
+        <span class="ftag ftag-orange">PDF GRN</span>
+      </div>
+
+      <div class="feat-card c-purple">
+        <div class="fi">🏢</div>
+        <h3>Supplier Management</h3>
+        <p>Maintain a complete digital directory of all your suppliers with their company name, contact person, phone number, and email. Each product in the system is linked to a supplier — so when the low stock alert fires, you know exactly who to call. No more searching through a phone book or paper files to find a supplier's number.</p>
+      </div>
+
+      <div class="feat-card c-teal">
+        <div class="fi">👥</div>
+        <h3>Customer Records &amp; History</h3>
+        <p>Save customer details and automatically track their complete purchase history. This is essential for credit customers, loyal regulars, and resolving any billing disputes. You can look up any customer and see every purchase they have ever made, when it was made, and what they paid — instantly.</p>
+      </div>
+
+      <div class="feat-card c-pink">
+        <div class="fi">↩️</div>
+        <h3>Returns &amp; Refunds Handling</h3>
+        <p>Process customer returns the right way — the returned item is automatically added back to stock, the return is recorded with a reason and the original sale reference, and a return receipt can be issued. Every return is documented properly so there is no ambiguity about what was returned and when.</p>
+        <span class="ftag ftag-green">STOCK AUTO-UPDATED</span>
+      </div>
+
+      <div class="feat-card c-indigo">
+        <div class="fi">🔧</div>
+        <h3>Stock Adjustments</h3>
+        <p>Correct stock quantities for real-world situations — damaged goods, miscounts after a stock take, write-offs, or items found during a count. Every adjustment requires a written reason and is permanently saved. This keeps your stock figures accurate and gives you a complete record of all inventory corrections over time.</p>
+      </div>
+
+      <div class="feat-card c-maroon">
+        <div class="fi">🕵️</div>
+        <h3>Full Audit Log — Complete Accountability</h3>
+        <p>Every single action taken inside the system is permanently recorded — every sale, every deletion, every price change, every login, and every stock adjustment. The audit log shows the exact user name, date, time, and what was changed. If a price is edited without permission or a product is deleted, you will know exactly who did it and when. Total accountability, always.</p>
+        <span class="ftag ftag-orange">TAMPER PROOF</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 5 — REPORTS ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">📊</div>
+    <div class="sh-tx"><h2>Reports &amp; PDF Documents</h2><p>Business intelligence and professional documents — always ready, always accurate</p></div>
+    <span class="sh-num">05 / 10</span>
+  </div>
+  <div class="body">
+    <div class="rep-intro">
+      One of the biggest advantages of running a digital system is having instant access to accurate business data at any time.
+      The NUVI system includes six types of reports and documents — all generated automatically from your live data, all downloadable as PDF,
+      and all formatted professionally enough to share with accountants, auditors, or business partners.
+    </div>
+    <div class="rep-grid">
+
+      <div class="rep-card">
+        <div class="rep-icon" style="background:#eff6ff;">📅</div>
+        <div>
+          <h3>Daily Sales Report</h3>
+          <p>A complete breakdown of every transaction recorded today — total revenue collected, number of bills issued, items sold per product line, payment type breakdown (cash, card, credit), and individual cashier activity. This report is designed for the end-of-day cash reconciliation process, making it easy to verify that cash in the drawer matches sales in the system.</p>
+          <span class="tag-pdf">📄 PDF DOWNLOAD</span>&nbsp;<span class="tag-live">LIVE DATA</span>
+        </div>
+      </div>
+
+      <div class="rep-card">
+        <div class="rep-icon" style="background:#f0fdf4;">📆</div>
+        <div>
+          <h3>Monthly Sales Report</h3>
+          <p>A month-by-month performance overview showing total revenue, cost of goods sold, and gross profit for each month. Compare months side by side to identify growth trends, seasonal patterns, and slow periods. This report gives business owners the data needed to plan stock purchases and staffing levels in advance rather than reacting to problems.</p>
+          <span class="tag-pdf">📄 PDF DOWNLOAD</span>
+        </div>
+      </div>
+
+      <div class="rep-card">
+        <div class="rep-icon" style="background:#fefce8;">🏆</div>
+        <div>
+          <h3>Top Products Report</h3>
+          <p>Instantly see your best selling products ranked by quantity sold and by revenue generated. This is one of the most powerful reports for a trade shop owner — it tells you exactly what to keep well stocked, what to promote, and what items are sitting on your shelf without moving. Stop guessing what sells and start stocking what actually moves.</p>
+          <span class="tag-pdf">📄 PDF DOWNLOAD</span>
+        </div>
+      </div>
+
+      <div class="rep-card">
+        <div class="rep-icon" style="background:#fff1f2;">⚠️</div>
+        <div>
+          <h3>Low Stock Report</h3>
+          <p>A complete list of every product in your shop that has fallen below its minimum reorder level — sorted by how critically low it is. This report can be downloaded as a PDF and given directly to your store keeper or sent to your supplier contact. It removes the need to physically walk through the store to check levels and ensures you never run out of critical items.</p>
+          <span class="tag-pdf">📄 PDF DOWNLOAD</span>
+        </div>
+      </div>
+
+      <div class="rep-card">
+        <div class="rep-icon" style="background:#f5f3ff;">💰</div>
+        <div>
+          <h3>Cash Summary Report</h3>
+          <p>A daily financial overview built specifically for the business owner — showing the total cash collected across all counters, breakdown by payment method, and a reconciliation summary to compare against actual cash on hand. This report ensures that every rupee collected by your cashiers is properly accounted for at the end of every working day.</p>
+          <span class="tag-live">OWNER ACCESS ONLY</span>
+        </div>
+      </div>
+
+      <div class="rep-card">
+        <div class="rep-icon" style="background:#fff7ed;">🧾</div>
+        <div>
+          <h3>Sale Receipts &amp; GRN Documents</h3>
+          <p>Every sale automatically generates a professionally formatted receipt with your shop name, item details, quantities, prices, discount, total, and payment method — ready to print and give to the customer. Every purchase from a supplier generates a full Goods Received Note with supplier details, items received, and unit costs. Both are permanently stored and downloadable as PDF at any time.</p>
+          <span class="tag-grn">📄 GRN PDF</span>&nbsp;<span class="tag-pdf">📄 RECEIPT PDF</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 6 — USER ROLES ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">🔐</div>
+    <div class="sh-tx"><h2>User Roles &amp; Access Control</h2><p>Every staff member sees only what they need — nothing more, nothing less</p></div>
+    <span class="sh-num">06 / 10</span>
+  </div>
+  <div class="body">
+    <div class="roles-intro">
+      In most shops, every staff member has access to everything — prices, profits, supplier costs, and cash data. This is a serious risk.
+      The NUVI system uses role-based access — you assign each staff member a specific role when you create their account, and the system automatically
+      restricts what they can see and do. A cashier cannot view your profit margins. A store keeper cannot access cash reports.
+      You remain in complete control of who sees what — without having to lock computers or stand over people's shoulders.
+    </div>
+    <div class="roles-grid">
+
+      <div class="role-card role-admin">
+        <span class="rbadge">ADMIN</span>
+        <h3>System Administrator</h3>
+        <p class="rdesc">The technical owner of the entire system. Has unrestricted access to every feature, every report, and every setting across the platform. Typically the business owner or a trusted senior manager.</p>
+        <ul>
+          <li>Create, edit, and deactivate all user accounts with role assignment</li>
+          <li>Full access to all modules — products, sales, purchases, returns, adjustments</li>
+          <li>View and download all report types including financial and cash summaries</li>
+          <li>Access and review the complete audit log of all system activity</li>
+          <li>Configure product categories, supplier lists, and system settings</li>
+          <li>View cost prices, selling prices, and profit margins on all products</li>
+        </ul>
+        <div class="rnote">⚠️ This role should only be assigned to the business owner or a fully trusted person — it has no restrictions.</div>
+      </div>
+
+      <div class="role-card role-owner">
+        <span class="rbadge">OWNER</span>
+        <h3>Business Owner</h3>
+        <p class="rdesc">Designed for the shop owner who wants full visibility into the business — revenue, stock levels, purchasing history, and performance data — without needing to manage user accounts or system settings.</p>
+        <ul>
+          <li>Live dashboard showing today's sales totals, purchase activity, and low stock count</li>
+          <li>Access and download all 5 report types as PDF — daily, monthly, top products, low stock, cash</li>
+          <li>View the full history of all sales, purchases, returns, and stock adjustments</li>
+          <li>Manage products, categories, customers, and supplier directory</li>
+          <li>Monitor staff activity and accountability through the audit log</li>
+          <li>View cost prices and profit margins — confidential financial data fully visible</li>
+        </ul>
+        <div class="rnote">💡 Ideal for a working owner who is present in the shop and wants to stay informed about all business activity.</div>
+      </div>
+
+      <div class="role-card role-cashier">
+        <span class="rbadge">CASHIER</span>
+        <h3>Cashier / Sales Staff</h3>
+        <p class="rdesc">Built for counter-level billing staff who handle sales and customer interaction. Has just enough access to do the job efficiently — and nothing more. Sensitive financial information is completely hidden from this role.</p>
+        <ul>
+          <li>Full access to the dedicated POS billing terminal for fast checkout</li>
+          <li>Search and view products — names, selling prices, and stock availability only (no cost prices)</li>
+          <li>Process customer returns with a return receipt at the counter</li>
+          <li>Create and view customer records and contact details</li>
+          <li>Cannot access any financial reports, cash summaries, or monthly data</li>
+          <li>Cannot change any product prices, stock quantities, or supplier information</li>
+        </ul>
+        <div class="rnote">🔒 Cashiers cannot see profit margins, cost prices, or owner-level reports — full counter access with financial privacy protected.</div>
+      </div>
+
+      <div class="role-card role-stkeeper">
+        <span class="rbadge">STORE KEEPER</span>
+        <h3>Store Keeper</h3>
+        <p class="rdesc">For the staff member responsible for the physical warehouse or stock room. Their role is entirely focused on receiving deliveries, maintaining accurate stock records, and flagging discrepancies — nothing related to sales or cash.</p>
+        <ul>
+          <li>View all products and current stock levels across categories</li>
+          <li>Record incoming stock deliveries and automatically generate GRN documents</li>
+          <li>Perform and document stock adjustments for damages, write-offs, and corrections</li>
+          <li>Access the low stock report to identify what needs to be reordered urgently</li>
+          <li>Cannot access sales figures, cash reports, or customer billing history</li>
+          <li>Cannot change product selling prices or access any financial information</li>
+        </ul>
+        <div class="rnote">📦 The store keeper role keeps warehouse staff productive and accountable — without any exposure to sensitive sales or financial data.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 7 — WHO NEEDS THIS ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">🎯</div>
+    <div class="sh-tx"><h2>Who Needs This System?</h2><p>Built for trade, retail &amp; supply businesses across Sri Lanka</p></div>
+    <span class="sh-num">07 / 10</span>
+  </div>
+  <div class="body">
+    <div class="who-top">
+      Any business that buys stock, sells to customers, and needs to know what is in their warehouse is a perfect fit for this system.
+      Below are the key business sectors where the NUVI Inventory System delivers the most immediate value — already developed and ready to deploy.
+    </div>
+    <div class="who-grid">
+
+      <div class="who-card hot">
+        <span class="hot-lbl">BUILT FOR THIS</span>
+        <span class="wi">🔩</span>
+        <h3>Hardware Shops</h3>
+        <p>Manages a large variety of small items — nuts, bolts, pipes, tools, and fittings — with fast turnover. Designed specifically around the way hardware shops operate: fast counter search, GRN for supplier deliveries, and low stock alerts for high-demand items.</p>
+      </div>
+
+      <div class="who-card hot">
+        <span class="hot-lbl">HIGH DEMAND</span>
+        <span class="wi">🚗</span>
+        <h3>Auto Parts Shops</h3>
+        <p>Hundreds of part numbers, multiple categories, and customers who expect instant answers. The POS search makes finding the right part in seconds. Stock levels update automatically on every sale. Supplier records keep reordering organized and fast.</p>
+      </div>
+
+      <div class="who-card hot">
+        <span class="hot-lbl">EASY TO SELL</span>
+        <span class="wi">💻</span>
+        <h3>Computer &amp; IT Shops</h3>
+        <p>Track laptops, components, peripherals, and accessories by category and brand. Fast POS billing at the counter. Low stock alerts prevent running out of popular items. Tech-savvy owners adapt to the system very quickly and see immediate value.</p>
+      </div>
+
+      <div class="who-card">
+        <span class="wi">📷</span>
+        <h3>CCTV &amp; Security Shops</h3>
+        <p>Manage cameras, cables, DVRs, power supplies, and mounting hardware. Know exactly what is in stock before quoting a customer for an installation job. Track stock consumed per project to understand the true cost of each installation.</p>
+      </div>
+
+      <div class="who-card">
+        <span class="wi">⚡</span>
+        <h3>Electrical Shops</h3>
+        <p>Manage hundreds of small, fast-moving items — MCBs, switches, sockets, cables, and conduits. Automatic reorder alerts prevent running out of essential items that customers buy repeatedly. Category-based organization speeds up counter searches dramatically.</p>
+      </div>
+
+      <div class="who-card">
+        <span class="wi">🔧</span>
+        <h3>Plumbing Supply Shops</h3>
+        <p>Organize pipes, fittings, valves, and taps by category and size. Search any item at the counter in seconds instead of walking through the storeroom. Supplier management keeps reordering simple with direct contact information for each product line.</p>
+      </div>
+
+      <div class="who-card">
+        <span class="wi">📱</span>
+        <h3>Mobile Phone &amp; Accessories</h3>
+        <p>Track phones by model and variant, accessories by type and brand. Handle customer returns and warranty claims with a proper digital record. Customer history tracking supports after-sales service and repeat business follow-up.</p>
+      </div>
+
+      <div class="who-card">
+        <span class="wi">💡</span>
+        <h3>LED &amp; Lighting Shops</h3>
+        <p>Manage bulbs, LED strips, drivers, panels, and fittings by wattage, type, and brand. Know exactly what variants are running low before customers ask. GRN documents support bulk supplier deliveries with full quantity verification.</p>
+      </div>
+
+      <div class="who-card">
+        <span class="wi">🏗️</span>
+        <h3>Tile, Sanitary &amp; Building Supplies</h3>
+        <p>Track tiles, bathroom fittings, and sanitary ware by unit or box quantity. Manage multiple supplier relationships with separate pricing. Monthly reports show which product lines are moving fastest and where to focus purchasing budget.</p>
+      </div>
+
+    </div>
+
+    <div class="who-custom">
+      <span class="wc-icon">🛠️</span>
+      <div>
+        <h4>We develop for any business sector — fully customized to your requirements</h4>
+        <p>The sectors above are already built and ready. But if your business has specific workflows, unique stock categories, or special processes that require a customized system, we develop from scratch based on your exact requirements. Whatever problem your business faces with inventory and billing, we can build the right solution for you.</p>
+      </div>
+      <span class="wc-tag">Custom Development Available</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 8 — COMPLETE PACKAGE ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">🖥️</div>
+    <div class="sh-tx"><h2>The Complete Ready-to-Use Package</h2><p>Hardware + Software + Setup + Support — everything included, nothing extra to buy</p></div>
+    <span class="sh-num">08 / 10</span>
+  </div>
+  <div class="body">
+    <div class="pkg-wrap">
+      <div class="pkg-left">
+        <h3>Plug in on day one — and start selling</h3>
+        <p>
+          You do not need to source hardware separately, find a technician to set things up, or worry about
+          whether the equipment will work with the software. We supply everything, deliver it to your shop,
+          install it, configure it, and train your staff — all as part of a single package.
+          From the moment we leave, your counter is live and ready to use.
+        </p>
+        <ul class="hw-list">
+          <li>
+            <span class="hw-ic">🖥️</span>
+            <div><div class="hw-nm">Desktop Computer</div><div class="hw-sp">Intel Core i3 · 8GB RAM · 256GB SSD · Windows 10</div></div>
+            <span class="hw-ck">✓</span>
+          </li>
+          <li>
+            <span class="hw-ic">🖵</span>
+            <div><div class="hw-nm">LED Monitor — 21.5 inch Full HD</div><div class="hw-sp">Clear, bright display — ideal size for a counter</div></div>
+            <span class="hw-ck">✓</span>
+          </li>
+          <li>
+            <span class="hw-ic">🖨️</span>
+            <div><div class="hw-nm">80mm Thermal Receipt Printer</div><div class="hw-sp">Fast, silent, no ink cartridges — prints a receipt in 2 seconds</div></div>
+            <span class="hw-ck">✓</span>
+          </li>
+          <li>
+            <span class="hw-ic">🗃️</span>
+            <div><div class="hw-nm">Auto-Open Cash Drawer</div><div class="hw-sp">Opens automatically the moment a receipt is printed at POS</div></div>
+            <span class="hw-ck">✓</span>
+          </li>
+          <li>
+            <span class="hw-ic">🔋</span>
+            <div><div class="hw-nm">UPS Power Backup — 1000VA</div><div class="hw-sp">Keeps the system running safely during power cuts</div></div>
+            <span class="hw-ck">✓</span>
+          </li>
+          <li>
+            <span class="hw-ic">⌨️</span>
+            <div><div class="hw-nm">Keyboard &amp; Mouse</div><div class="hw-sp">Standard wired set, configured and ready</div></div>
+            <span class="hw-ck">✓</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="pkg-right">
+        <div>
+          <h4>What's included in the software</h4>
+          <ul class="sw-list">
+            <li>Full Inventory Management System — lifetime license</li>
+            <li>Up to 100 user accounts supported</li>
+            <li>1GB cloud database storage (Supabase)</li>
+            <li>POS, GRN, Reports, Returns, Audit Log — all included</li>
+            <li>All PDF document downloads — receipts, GRN, reports</li>
+            <li>System installation, full data setup and configuration</li>
+            <li>Staff training — how to use every feature in the system</li>
+            <li>No monthly fees — one payment, owned forever</li>
+          </ul>
+        </div>
+        <div class="sup-box">
+          <div class="sv">3 On-Site Visits</div>
+          <div class="sl">Support visits included after installation<br/>for issues, retraining, or technical help</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 9 — PRICING ══════════════ -->
+<div class="slide">
+  <div class="sh">
+    <div class="sh-ic">💰</div>
+    <div class="sh-tx"><h2>Simple &amp; Transparent Pricing</h2><p>One payment, everything included — no monthly fees, no hidden charges, no renewals</p></div>
+    <span class="sh-num">09 / 10</span>
+  </div>
+  <div class="body">
+    <div class="price-intro">
+      <h3>Pay once. Use forever. This is a lifetime license.</h3>
+      <p>You own the software permanently. There are no monthly subscription charges, no annual renewal fees, and no surprise costs. One payment and the system belongs to your business for life.</p>
+    </div>
+    <div class="price-cards">
+
+      <div class="pc pc-trial">
+        <h3>🎁 Free Trial Period</h3>
+        <div class="big-price">Rs. 0</div>
+        <div class="psub">First 30 days — absolutely free</div>
+        <ul>
+          <li>Full system — all features unlocked</li>
+          <li>No payment or card details required</li>
+          <li>We set everything up for you</li>
+          <li>Full staff training included</li>
+          <li>Try the real system before you decide</li>
+        </ul>
+      </div>
+
+      <div class="pc pc-main">
+        <div class="ribbon">⭐ Complete Business Package</div>
+        <h3>Hardware + Software + Support</h3>
+        <div class="big-price">Rs. 500,000</div>
+        <div class="psub">One-time payment · Lifetime license · No monthly fees</div>
+        <ul>
+          <li>Desktop PC (Core i3, 8GB RAM, 256GB SSD)</li>
+          <li>21.5" Monitor + Thermal Printer + Cash Drawer</li>
+          <li>UPS 1000VA + Keyboard &amp; Mouse</li>
+          <li>Full software — 100 users, 1GB storage</li>
+          <li>All features: POS, GRN, Reports, Audit Log</li>
+          <li>System installation, setup &amp; staff training</li>
+          <li>3 on-site support visits included</li>
+        </ul>
+      </div>
+
+      <div class="pc pc-visit">
+        <h3>🔧 Additional Support</h3>
+        <div class="big-price">Rs. 15,000</div>
+        <div class="psub">Per on-site visit after free visits used</div>
+        <ul>
+          <li>On-site technical support</li>
+          <li>Staff retraining sessions</li>
+          <li>System troubleshooting</li>
+          <li>Hardware assistance</li>
+          <li>Scheduled by appointment</li>
+        </ul>
+      </div>
+
+    </div>
+    <div class="neg-banner">
+      <span class="ni">💬</span>
+      <div>
+        <strong>We understand every business is different.</strong> If the package price needs to be adjusted based on your shop size, requirements, or budget,
+        we are open to a conversation. Our goal is to get your business running on a proper system — call us and let's find the right arrangement for you.
+        &nbsp;&nbsp;<strong>077 662 2922 &nbsp;|&nbsp; info@nuvi.lk</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════ SLIDE 10 — CTA ══════════════ -->
+<div class="slide slide-cta">
+  <div class="cta-bg b1"></div>
+  <div class="cta-bg b2"></div>
+
+  <div class="cta-top">
+    <div class="cta-logo">
+      <div class="clb">📦</div>
+      <div>
+        <div class="clname">NUVI <em>Engineering</em></div>
+        <div class="clsub">PVT LTD</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-body">
+    <div class="cta-eyebrow">Start Your Free Trial Today</div>
+    <h2>Ready to Transform<br/>Your <span>Business?</span></h2>
+    <p class="csub">
+      Leave behind the paper books, the guesswork, and the lost sales.
+      Your first 30 days are completely free — no payment, no commitment,
+      and no risk. We set everything up and train your staff at no cost.
+      Experience the difference before you decide.
+    </p>
+    <div class="trial-pill">
+      🎁 &nbsp; 30 Days Free — Full System — Zero Risk — We Set It Up For You
+    </div>
+    <div class="contact-row">
+      <div class="c-box">
+        <div class="cbi">📞</div>
+        <div class="cbl">Call or WhatsApp</div>
+        <div class="cbv">077 662 2922</div>
+      </div>
+      <div class="c-box">
+        <div class="cbi">✉️</div>
+        <div class="cbl">Email Inquiries</div>
+        <div class="cbv">info@nuvi.lk</div>
+      </div>
+      <div class="c-box">
+        <div class="cbi">📍</div>
+        <div class="cbl">Based In</div>
+        <div class="cbv">Colombo, Sri Lanka</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-foot">
+    NUVI Engineering PVT LTD &nbsp;·&nbsp; Smart Inventory Management System &nbsp;·&nbsp; info@nuvi.lk &nbsp;·&nbsp; 077 662 2922 &nbsp;·&nbsp; Colombo, Sri Lanka
+  </div>
+</div>
+
+
+</body>
+</html>

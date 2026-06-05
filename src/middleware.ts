@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { updateSession } from '@/lib/supabase/middleware'
 
+const SESSION_DURATION_MS = 12 * 60 * 60 * 1000 // 12 hours
+
 export async function middleware(request: NextRequest) {
   const { supabase, supabaseResponse, user } = await updateSession(request)
   const { pathname } = request.nextUrl
@@ -11,6 +13,18 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     if (publicRoutes.includes(pathname)) return supabaseResponse
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // 12-hour session expiry check
+  const loginAtRaw = request.cookies.get('session_login_at')?.value
+  if (loginAtRaw) {
+    const loginAt = parseInt(loginAtRaw, 10)
+    if (!isNaN(loginAt) && Date.now() - loginAt > SESSION_DURATION_MS) {
+      await supabase.auth.signOut()
+      const response = NextResponse.redirect(new URL('/login?reason=expired', request.url))
+      response.cookies.delete('session_login_at')
+      return response
+    }
   }
 
   // Use service role to bypass RLS — ensures we always get the user row

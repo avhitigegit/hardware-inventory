@@ -3,6 +3,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+
+const SESSION_DURATION_MS = 12 * 60 * 60 * 1000 // 12 hours
+export { SESSION_DURATION_MS }
 
 export async function signIn(
   email: string,
@@ -40,6 +44,16 @@ export async function signIn(
     return { error: 'Your account has been deactivated. Contact the administrator.' }
   }
 
+  // Stamp login time — used by middleware and SessionGuard for 12h auto-logout
+  const cookieStore = await cookies()
+  cookieStore.set('session_login_at', Date.now().toString(), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 60 * 60 * 12,
+    path: '/',
+  })
+
   const role = userData.role
   if (role === 'CASHIER') redirect('/sales/pos')
   if (role === 'STORE_KEEPER') redirect('/purchases')
@@ -49,6 +63,8 @@ export async function signIn(
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  const cookieStore = await cookies()
+  cookieStore.delete('session_login_at')
   redirect('/login')
 }
 

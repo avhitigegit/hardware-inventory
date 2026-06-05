@@ -1,0 +1,1542 @@
+================================================================================
+  NUVI ENGINEERING — INVENTORY MANAGEMENT SYSTEM
+  ADVANCED FEATURE DEVELOPMENT REFERENCE
+================================================================================
+  Version   : 2.0
+  Project   : Hardware Inventory Management System (Next.js + Supabase)
+  Prepared  : NUVI Engineering PVT LTD
+  Contact   : info@nuvi.lk | 077 662 2922
+================================================================================
+
+  This document is the master development reference for all planned features
+  beyond the current v1.0 release. Each feature includes business context,
+  user stories, workflow diagrams, database requirements, UI screens needed,
+  and acceptance criteria. Use this file to pick up any feature and begin
+  development immediately.
+
+================================================================================
+  CURRENT SYSTEM — v1.0 COMPLETED FEATURES
+================================================================================
+
+  STATUS    MODULE
+  --------  -------------------------------------------------------------------
+  DONE      Dashboard (sales count, revenue, low stock alerts, credit summary)
+  DONE      Products (CRUD, categories, low stock badge, search, filter)
+  DONE      Categories Management
+  DONE      Suppliers Management
+  DONE      Customers Management (with credit tracking)
+  DONE      Purchases / GRN (with PDF download)
+  DONE      Sales / POS (CASH, CREDIT, SPLIT payment types)
+  DONE      Returns (CASH_REFUND, CREDIT_ADJUSTMENT)
+  DONE      Stock Adjustments (ADD / SUBTRACT with reason)
+  DONE      Reports — Daily, Monthly, Top Products, Low Stock, Cash Summary
+  DONE      PDF — Sale Receipt, GRN Document, All Reports
+  DONE      Role-Based Access (ADMIN, OWNER, CASHIER, STORE_KEEPER)
+  DONE      Audit Log (immutable trail — every action logged)
+  DONE      12-Hour Session Auto-Logout (server + client enforced)
+  DONE      User Profile, Avatar, Password Change
+
+================================================================================
+  TECHNOLOGY STACK (for all new features)
+================================================================================
+
+  Frontend   : Next.js 14+ (App Router), TypeScript, Tailwind CSS
+  Backend    : Next.js Server Actions ('use server')
+  Database   : Supabase (PostgreSQL) — Supabase client + service role
+  Auth       : Supabase Auth with RLS policies
+  PDF        : @react-pdf/renderer (existing pattern)
+  Validation : Zod schemas (src/lib/validations/)
+  State      : React Query / TanStack Query (existing QueryProvider)
+  Toast      : Sonner (existing)
+  ORM        : Direct Supabase queries (no ORM)
+
+================================================================================
+  FEATURE PRIORITY LEGEND
+================================================================================
+
+  [P1] CRITICAL    — Prevents real shop from operating without this feature
+  [P2] IMPORTANT   — Needed for growing/medium shops, high customer value
+  [P3] ADVANCED    — Multi-branch, specialist, or enterprise-grade features
+
+================================================================================
+  DEVELOPMENT EFFORT LEGEND
+================================================================================
+
+  XS  = Half a day     (< 4 hours)
+  S   = 1 day          (4–8 hours)
+  M   = 2–3 days       (1–2 developer days per feature)
+  L   = 4–6 days       (Full feature with DB, actions, UI, PDF)
+  XL  = 7–14 days      (Complex, multiple linked modules)
+  XXL = 2–4 weeks      (Architecture change, multi-module impact)
+
+
+================================================================================
+================================================================================
+  PRIORITY 1 — CRITICAL BUSINESS GAPS  [10 features]
+================================================================================
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-01]  HOLD BILL AT POS
+  Priority : CRITICAL | Effort : XS | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  At a busy counter, a cashier sometimes builds a bill for a customer who then
+  steps away to check on something (price, item, partner approval). The cashier
+  must serve the next customer immediately. Currently, leaving mid-bill loses all
+  added items. The cashier is forced to make the next customer wait or lose all
+  the work done on the first bill.
+
+  USER STORIES
+  ------------
+  As a CASHIER, I want to hold the current in-progress bill so I can serve the
+  next customer without losing the items already added to the cart.
+
+  As a CASHIER, I want to retrieve any held bill from a list and continue from
+  where I left off.
+
+  As a CASHIER, I want to delete a held bill if the customer does not return.
+
+  WORKFLOW
+  --------
+  1. Cashier is building a bill — has 3 items in cart
+  2. Customer says "wait, let me check" and steps aside
+  3. Cashier clicks [Hold Bill] button on POS screen
+  4. System saves the cart to a "held bills" local state with a label
+     (e.g. "Hold #1 — 3 items — 11:42 AM")
+  5. POS clears to an empty cart — cashier serves next customer normally
+  6. When first customer returns, cashier clicks [Held Bills] panel
+  7. Selects "Hold #1" — cart restores with all original items
+  8. Cashier completes the sale normally
+
+  SCREENS NEEDED
+  --------------
+  - POS page: [Hold Bill] button added to cart header
+  - POS page: [Held Bills] panel/drawer (slide-out list of held carts)
+  - Each held bill shows: hold number, item count, subtotal, time held
+  - [Resume] and [Delete] action per held bill
+
+  DATABASE CHANGES
+  ----------------
+  No database change needed.
+  Held bills are stored in-memory (React state or localStorage) only.
+  They are NOT persisted — if the browser is refreshed, held bills are cleared.
+  This is acceptable behaviour for a POS counter session.
+
+  IMPLEMENTATION NOTE
+  -------------------
+  - Add `heldBills: CartItem[][]` state in POS component
+  - [Hold Bill] button pushes current cart to heldBills array and clears cart
+  - Held bills panel maps heldBills and shows [Resume] / [Discard] per hold
+  - [Resume] restores the selected hold back to the active cart
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Cashier can hold a bill with at least 1 item in the cart
+  [ ] Held bill panel shows all currently held bills with item count and time
+  [ ] Resuming a held bill restores exact items and quantities to the cart
+  [ ] Multiple bills can be held simultaneously (at least 3)
+  [ ] Discarding a held bill removes it from the list permanently
+  [ ] POS receipt does not show any held bill reference — only completed sales
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-02]  AGED DEBTORS REPORT
+  Priority : CRITICAL | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The current system shows total credit outstanding per customer but cannot
+  answer: "Which customers have owed money for more than 60 days?" This is one
+  of the most critical financial reports for any trade business. Without it, the
+  owner does not know who to chase for payment and overdue debts go unnoticed.
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to see all outstanding customer balances grouped by how
+  long they have been overdue, so I can prioritize collection calls.
+
+  As an OWNER, I want to download the aged debtors report as a PDF to share with
+  my accountant or to take to the bank.
+
+  REPORT STRUCTURE
+  ----------------
+  Customer Name | Total Outstanding | 0-30 Days | 31-60 Days | 61-90 Days | 90+ Days
+
+  Logic: For each credit sale, the "age" is calculated from the sale date to
+  today. Partial payments reduce the oldest bucket first.
+
+  SCREENS NEEDED
+  --------------
+  - New report page: /reports/aged-debtors
+  - Table: one row per customer with balance, grouped by age bucket
+  - Summary row: totals per age bucket
+  - Filter: show only customers with balance > 0
+  - [Download PDF] button
+
+  DATABASE CHANGES
+  ----------------
+  No new tables needed. Query joins:
+    customers → sales (payment_type IN CREDIT, SPLIT, balance_amount > 0)
+    customers → customer_payments (to subtract payments made)
+
+  SQL APPROACH
+  ------------
+  SELECT customer, sale_date, balance_amount
+  FROM sales
+  WHERE payment_type IN ('CREDIT','SPLIT') AND balance_amount > 0
+  Then in application layer, bucket by (TODAY - sale_date):
+    0-30 days, 31-60, 61-90, 90+
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Report shows only customers with outstanding credit balance > 0
+  [ ] Each customer row shows total balance split into 4 age buckets
+  [ ] Summary row at bottom shows total of each bucket column
+  [ ] Clicking a customer row opens their account statement (links to P1-05)
+  [ ] PDF download produces clean table with date generated and grand total
+  [ ] OWNER and ADMIN roles can access; CASHIER and STORE_KEEPER cannot
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-03]  AGED CREDITORS REPORT
+  Priority : CRITICAL | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Same concept as Aged Debtors but from the other direction — what the shop
+  owes to suppliers on credit purchases. Without this, the owner does not know
+  which supplier invoices are overdue and risks damaging supplier relationships
+  or losing credit terms.
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to see all outstanding supplier balances grouped by
+  overdue age so I can prioritize which supplier to pay first.
+
+  REPORT STRUCTURE
+  ----------------
+  Supplier Name | Total Owed | 0-30 Days | 31-60 Days | 61-90 Days | 90+ Days
+
+  SCREENS NEEDED
+  --------------
+  - New report page: /reports/aged-creditors
+  - Same layout as Aged Debtors but for suppliers
+  - [Download PDF] button
+
+  DATABASE CHANGES
+  ----------------
+  No new tables. Query:
+    suppliers → purchases (payment_type = 'CREDIT', supplier credit_balance > 0)
+    suppliers → supplier_payments (payments made to reduce balance)
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Report shows only suppliers with credit_balance > 0
+  [ ] Age buckets calculated from purchase date to today
+  [ ] PDF downloadable
+  [ ] OWNER and ADMIN access only
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-04]  STOCK VALUATION REPORT
+  Priority : CRITICAL | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The owner cannot currently see: "What is the total value of all my stock right
+  now at cost price?" This is essential for:
+  - Business insurance (insure stock at correct value)
+  - Bank loans (collateral valuation)
+  - Annual accounting and tax filing
+  - Understanding how much cash is locked in inventory
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to see the current value of all my inventory at cost price,
+  grouped by category, so I can understand how much capital is in my stock.
+
+  As an OWNER, I want to download the stock valuation as a PDF for my accountant.
+
+  REPORT STRUCTURE
+  ----------------
+  Category | Product Name | SKU | Unit | Stock Qty | Unit Cost | Total Value
+  -------------------------------------------------------------------------
+  Fasteners & Fixings | Hex Bolt M6 | FF-001 | PCS | 450 | Rs.7 | Rs.3,150
+  ...
+  CATEGORY SUBTOTAL: Rs. XX,XXX
+  -------------------------------------------------------------------------
+  GRAND TOTAL STOCK VALUE: Rs. X,XXX,XXX
+
+  SCREENS NEEDED
+  --------------
+  - New report page: /reports/stock-valuation
+  - Grouped by category (collapsible sections)
+  - Filter: All / Active only / Low stock only / By category
+  - Sort: By value (highest first) or alphabetical
+  - [Download PDF] button
+
+  DATABASE CHANGES
+  ----------------
+  No new tables. Query:
+    SELECT name, sku, unit, stock_quantity, buying_price,
+           (stock_quantity * buying_price) AS total_value
+    FROM products
+    WHERE is_active = true
+    ORDER BY category_id, name
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Every active product shown with current stock_quantity and buying_price
+  [ ] Total value column = stock_quantity × buying_price per product
+  [ ] Category subtotals and grand total shown
+  [ ] Zero-stock products shown but clearly marked (Rs. 0 value)
+  [ ] PDF includes date/time generated, total product count, grand total
+  [ ] OWNER and ADMIN access only (buying prices are confidential)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-05]  CUSTOMER ACCOUNT STATEMENT
+  Priority : CRITICAL | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Credit customers (contractors, trade businesses) need a monthly or on-demand
+  account statement showing all transactions — sales, payments, and returns —
+  with a running balance. Currently the owner has to navigate 3 separate screens
+  to piece this together. The customer often disputes their balance because there
+  is no single document to refer to.
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to generate a formal account statement for any customer
+  for any date range and download it as PDF to send to them.
+
+  As a CASHIER, I want to quickly show a customer their account balance and
+  recent transactions when they ask at the counter.
+
+  STATEMENT STRUCTURE
+  -------------------
+  Header: Customer name, address, phone, statement period
+  -------------------------------------------------------
+  Date       | Reference     | Description        | Debit  | Credit | Balance
+  --------------------------------------------------------------------------
+  2026-05-01 | SAL-00234     | Sale — 5 products  | 15,000 |        | 15,000
+  2026-05-08 | SAL-00251     | Sale — 2 products  |  8,500 |        | 23,500
+  2026-05-15 | PAY-00089     | Payment received   |        | 10,000 | 13,500
+  2026-05-22 | RET-00012     | Return credit      |        |  1,200 | 12,300
+  --------------------------------------------------------------------------
+  CLOSING BALANCE: Rs. 12,300 CR
+
+  SCREENS NEEDED
+  --------------
+  - On customer detail page (/customers/[id]): [Statement] button
+  - Date range picker (default: current month)
+  - Preview table in the modal or new page
+  - [Download PDF] button
+
+  DATABASE CHANGES
+  ----------------
+  No new tables. Query merges:
+    sales (WHERE customer_id AND date range)
+    customer_payments (WHERE customer_id AND date range)
+    returns (WHERE customer_id AND date range)
+  Union sorted by created_at, running balance calculated in app layer.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Statement covers all sales, payments, and returns for selected period
+  [ ] Running balance column updates after every transaction row
+  [ ] Opening balance (from before period start) shown at top
+  [ ] Closing balance at bottom matches customer.credit_balance
+  [ ] PDF includes shop name, customer details, period, and date generated
+  [ ] OWNER, ADMIN, and CASHIER roles can view (not STORE_KEEPER)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-06]  PURCHASE ORDER (PO)
+  Priority : CRITICAL | Effort : L | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Currently the system only records stock AFTER it arrives (GRN). Real business
+  requires raising a formal Purchase Order first — before goods are dispatched
+  by the supplier. Without PO, there is no record of what was ordered, no way to
+  follow up on pending deliveries, and no way to verify that what arrived matches
+  what was ordered.
+
+  WORKFLOW
+  --------
+  RAISE PO  →  SEND TO SUPPLIER  →  GOODS ARRIVE  →  RECEIVE (GRN against PO)
+  [DRAFT]       [SENT/PENDING]        [PARTIAL / FULL]    [CLOSED]
+
+  PO STATUSES:
+    DRAFT     — being prepared, not yet sent to supplier
+    SENT      — sent to supplier, awaiting delivery
+    PARTIAL   — some items received, rest still pending
+    RECEIVED  — all items received (GRN created), PO closed
+    CANCELLED — PO cancelled before delivery
+
+  USER STORIES
+  ------------
+  As an OWNER/STORE_KEEPER, I want to create a Purchase Order to a supplier
+  listing the products I need and the quantities, so the supplier knows exactly
+  what to send.
+
+  As a STORE_KEEPER, when stock arrives, I want to create a GRN against an
+  existing PO so I can verify received quantities match ordered quantities.
+
+  As an OWNER, I want to see all open POs (sent but not yet received) so I can
+  follow up on pending deliveries.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  purchase_orders:
+    id              BIGSERIAL PRIMARY KEY
+    supplier_id     BIGINT REFERENCES suppliers(id)
+    po_number       TEXT NOT NULL UNIQUE
+    status          TEXT CHECK (IN 'DRAFT','SENT','PARTIAL','RECEIVED','CANCELLED')
+    expected_date   DATE
+    notes           TEXT
+    created_by      UUID REFERENCES users(id)
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+
+  purchase_order_items:
+    id              BIGSERIAL PRIMARY KEY
+    po_id           BIGINT REFERENCES purchase_orders(id) ON DELETE CASCADE
+    product_id      BIGINT REFERENCES products(id)
+    ordered_qty     NUMERIC(10,3) NOT NULL
+    received_qty    NUMERIC(10,3) NOT NULL DEFAULT 0
+    unit_price      NUMERIC(12,2) NOT NULL
+
+  SCREENS NEEDED
+  --------------
+  - /purchase-orders            — list of all POs with status filter
+  - /purchase-orders/new        — create PO form (supplier + items)
+  - /purchase-orders/[id]       — PO detail with status, items, history
+  - /purchase-orders/[id]/receive — receive goods form (enter received qty per item)
+  - PDF: Purchase Order document (to send/print for supplier)
+
+  LINK TO EXISTING GRN
+  --------------------
+  When receiving against a PO, a GRN (purchases record) is auto-created.
+  The existing purchases table gets a po_id foreign key:
+    ALTER TABLE purchases ADD COLUMN po_id BIGINT REFERENCES purchase_orders(id);
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] PO can be created with multiple products and quantities
+  [ ] PO PDF can be downloaded and sent to supplier
+  [ ] PO status changes correctly through its lifecycle
+  [ ] When receiving goods, system compares received qty vs ordered qty
+  [ ] Short deliveries are flagged (received < ordered)
+  [ ] GRN is auto-created when goods are received against a PO
+  [ ] Dashboard shows count of open (SENT) POs
+  [ ] OWNER and STORE_KEEPER can create POs; CASHIER cannot
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-07]  EXPENSE TRACKING
+  Priority : CRITICAL | Effort : M | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The system currently tracks revenue (sales) and procurement cost (purchases)
+  but completely ignores operating expenses. The P&L report is impossible to
+  build without expense data. A shop paying Rs. 80,000/month in rent, Rs. 50,000
+  in salaries, and Rs. 15,000 in electricity has no way to see true net profit.
+
+  EXPENSE CATEGORIES (default set)
+  ---------------------------------
+  - Rent & Utilities (rent, electricity, water, internet)
+  - Staff & Labour (salaries, wages, overtime)
+  - Transport & Vehicle (fuel, vehicle maintenance)
+  - Bank & Finance (bank charges, loan interest, service fees)
+  - Marketing & Advertising (flyers, signage, online ads)
+  - Maintenance & Repairs (shop maintenance, equipment repair)
+  - Office & Consumables (stationery, printer ink, bags)
+  - Other Expenses
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to record all business expenses with a date, amount,
+  category, and description so I can see my true profit each month.
+
+  As an OWNER, I want a monthly expense summary showing how much was spent
+  per category, so I can control costs.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  expense_categories:
+    id            BIGSERIAL PRIMARY KEY
+    name          TEXT NOT NULL UNIQUE
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+
+  expenses:
+    id            BIGSERIAL PRIMARY KEY
+    category_id   BIGINT REFERENCES expense_categories(id)
+    amount        NUMERIC(12,2) NOT NULL
+    description   TEXT NOT NULL
+    expense_date  DATE NOT NULL
+    reference     TEXT (receipt number, invoice ref, etc.)
+    created_by    UUID REFERENCES users(id)
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+
+  SCREENS NEEDED
+  --------------
+  - /expenses                  — list all expenses with date range filter
+  - /expenses/new              — add expense form
+  - /expenses/[id]             — edit/view expense
+  - /expenses/categories       — manage expense categories
+  - Report: monthly expense summary (feeds into P&L in P1-08)
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Expenses can be added with date, category, amount, description
+  [ ] Expense categories are manageable (add/edit/delete)
+  [ ] Monthly expense list shows total per category
+  [ ] Expenses appear in the P&L report (P1-08) when built
+  [ ] OWNER and ADMIN can add/edit expenses; CASHIER cannot
+  [ ] Audit log records all expense additions and edits
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-08]  PROFIT & LOSS REPORT
+  Priority : CRITICAL | Effort : M | Dependency : P1-07 (Expense Tracking)
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The single most important financial report for any business owner. Currently
+  the system shows revenue and purchase cost separately — but never combines them
+  into a meaningful P&L. The owner does not know if the business is actually
+  profitable.
+
+  P&L STRUCTURE
+  -------------
+  REVENUE
+    Total Sales Revenue                       Rs. X,XXX,XXX
+    Less: Returns & Refunds                   Rs.    XX,XXX
+    NET REVENUE                               Rs. X,XXX,XXX
+
+  COST OF GOODS SOLD (COGS)
+    Total Purchase Cost of Items Sold         Rs.   XXX,XXX
+    GROSS PROFIT                              Rs.   XXX,XXX
+    Gross Margin %                                      XX%
+
+  OPERATING EXPENSES
+    Rent & Utilities                          Rs.    XX,XXX
+    Staff & Labour                            Rs.    XX,XXX
+    Transport & Vehicle                       Rs.    XX,XXX
+    Bank & Finance                            Rs.     X,XXX
+    Other Expenses                            Rs.     X,XXX
+    TOTAL EXPENSES                            Rs.   XXX,XXX
+
+  NET PROFIT / (LOSS)                         Rs.   XXX,XXX
+  Net Margin %                                           XX%
+
+  SCREENS NEEDED
+  --------------
+  - /reports/profit-loss
+  - Date range selector (month, quarter, custom)
+  - Visual chart: Revenue vs COGS vs Expenses vs Net Profit (bar chart)
+  - [Download PDF] button
+
+  COGS CALCULATION NOTE
+  ---------------------
+  COGS = Sum of (quantity_sold × buying_price) for each sale_item in period.
+  This requires joining sale_items → products to get buying_price at time of sale.
+  Ideally: store buying_price on sale_items at the time of sale (snapshot pricing).
+  Current schema does not store this — may need migration to add buying_price to
+  sale_items table.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] P&L shows correct Revenue, COGS, Gross Profit for selected period
+  [ ] Expenses from expense_categories are grouped and totalled
+  [ ] Net Profit = Gross Profit - Total Expenses
+  [ ] Gross Margin % and Net Margin % calculated correctly
+  [ ] PDF download includes period, date generated, all line items
+  [ ] OWNER and ADMIN access only
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-09]  QUOTATION / ESTIMATE GENERATION
+  Priority : CRITICAL | Effort : L | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Hardware shops frequently receive requests from contractors and construction
+  companies to quote on a list of materials before committing to a purchase.
+  Currently staff write quotes on paper, items get lost, and there is no way to
+  convert an approved quote to a sale. This causes lost revenue and wasted time.
+
+  WORKFLOW
+  --------
+  CREATE QUOTE → SEND TO CUSTOMER → CUSTOMER APPROVES → CONVERT TO SALE
+  [DRAFT]          [SENT]              [ACCEPTED]            [INVOICED]
+
+  QUOTE STATUSES:
+    DRAFT     — being prepared
+    SENT      — given/sent to customer
+    ACCEPTED  — customer approved, ready to invoice
+    INVOICED  — converted to a sale
+    EXPIRED   — validity period passed, not accepted
+    REJECTED  — customer declined
+
+  USER STORIES
+  ------------
+  As an OWNER/CASHIER, I want to create a quote for a customer listing items and
+  prices so they can review and approve before we proceed with the sale.
+
+  As an OWNER, when a customer approves a quote, I want to convert it to a sale
+  with one click without re-entering all the items.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  quotations:
+    id              BIGSERIAL PRIMARY KEY
+    customer_id     BIGINT REFERENCES customers(id)
+    quote_number    TEXT NOT NULL UNIQUE
+    status          TEXT CHECK (status IN 'DRAFT','SENT','ACCEPTED','INVOICED','EXPIRED','REJECTED')
+    valid_until     DATE
+    discount_amount NUMERIC(12,2) DEFAULT 0
+    total_amount    NUMERIC(12,2) NOT NULL
+    notes           TEXT
+    created_by      UUID REFERENCES users(id)
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+
+  quotation_items:
+    id              BIGSERIAL PRIMARY KEY
+    quote_id        BIGINT REFERENCES quotations(id) ON DELETE CASCADE
+    product_id      BIGINT REFERENCES products(id)
+    quantity        NUMERIC(10,3) NOT NULL
+    unit_price      NUMERIC(12,2) NOT NULL
+    total_price     NUMERIC(12,2) NOT NULL
+
+  SCREENS NEEDED
+  --------------
+  - /quotations                 — list with status filter and search
+  - /quotations/new             — create quote form (same UX as POS)
+  - /quotations/[id]            — view quote, change status, convert to sale
+  - PDF: Quotation document (professional format with validity date)
+
+  CONVERT TO SALE LOGIC
+  ---------------------
+  On [Convert to Sale] button:
+    1. Create a new sale record from the quotation total
+    2. Create sale_items from quotation_items
+    3. Set quote status = 'INVOICED', store resulting sale_id on quotation
+    4. Redirect to the created sale detail page
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Quote can be created for walk-in or registered customer
+  [ ] Quote PDF is professional with shop details, validity date, terms
+  [ ] Quote status can be updated manually at any stage
+  [ ] [Convert to Sale] button appears when status = ACCEPTED
+  [ ] Converted sale deducts stock and creates audit log entry
+  [ ] Quote shows linked sale reference after conversion
+  [ ] Expired quotes (past valid_until) shown with EXPIRED badge
+  [ ] OWNER, ADMIN, and CASHIER can create quotes
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P1-10]  PHYSICAL STOCKTAKE MODULE
+  Priority : CRITICAL | Effort : XL | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Every 3–6 months, a hardware shop must physically count all stock and reconcile
+  with the system. Without a formal stocktake module, the process is chaotic —
+  staff count on paper, owner manually adjusts each product one by one, and there
+  is no audit trail showing what was found vs what was expected. System stock
+  figures drift further from reality over time.
+
+  WORKFLOW
+  --------
+  START SESSION → ASSIGN COUNTERS → COUNT BY CATEGORY → REVIEW VARIANCES → APPROVE
+
+  STOCKTAKE STATUSES:
+    IN_PROGRESS  — counting is underway, stock figures are frozen for reading
+    REVIEWING    — counting complete, owner is reviewing variances
+    APPROVED     — approved, all variances auto-adjusted
+    CANCELLED    — session abandoned
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to start a stocktake session that freezes system stock
+  figures so I can compare them to a physical count.
+
+  As a STORE_KEEPER, I want to enter the physical count for each product and see
+  the difference from the system quantity instantly.
+
+  As an OWNER, I want to review all variances before approving, and provide a
+  reason for each adjustment.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  stocktake_sessions:
+    id              BIGSERIAL PRIMARY KEY
+    session_number  TEXT NOT NULL UNIQUE
+    status          TEXT CHECK (IN 'IN_PROGRESS','REVIEWING','APPROVED','CANCELLED')
+    started_by      UUID REFERENCES users(id)
+    approved_by     UUID REFERENCES users(id)
+    notes           TEXT
+    started_at      TIMESTAMPTZ DEFAULT NOW()
+    completed_at    TIMESTAMPTZ
+
+  stocktake_items:
+    id              BIGSERIAL PRIMARY KEY
+    session_id      BIGINT REFERENCES stocktake_sessions(id) ON DELETE CASCADE
+    product_id      BIGINT REFERENCES products(id)
+    system_qty      NUMERIC(10,3) NOT NULL   -- frozen at session start
+    counted_qty     NUMERIC(10,3)            -- entered by staff
+    variance        NUMERIC(10,3)            -- counted - system
+    variance_reason TEXT
+    counted_by      UUID REFERENCES users(id)
+    counted_at      TIMESTAMPTZ
+
+  SCREENS NEEDED
+  --------------
+  - /stocktake                  — list past sessions, [Start New Session] button
+  - /stocktake/[id]             — session detail with product list
+  - /stocktake/[id]/count       — counting view: product list with qty input fields
+  - /stocktake/[id]/review      — variance review: show only items with variance
+  - PDF: Stocktake report (system qty, counted qty, variance per product)
+
+  APPROVAL LOGIC
+  --------------
+  On approval:
+    For each item with variance ≠ 0:
+      INSERT INTO stock_adjustments (product_id, type, qty, reason, created_by)
+      UPDATE products SET stock_quantity = counted_qty
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Only one stocktake session can be IN_PROGRESS at a time
+  [ ] System quantities are snapshotted at session start (frozen for display)
+  [ ] Staff can enter counted quantities per product with partial saves
+  [ ] Variance = counted_qty - system_qty shown clearly (positive = excess, negative = shortage)
+  [ ] Review screen filters to only show products with variance ≠ 0
+  [ ] On approval, stock_adjustments records are auto-created for all variances
+  [ ] Stocktake report PDF shows full list with variances and grand totals
+  [ ] Session cannot be approved without a reason entered for each variance
+  [ ] OWNER and ADMIN can start/approve sessions; STORE_KEEPER can enter counts
+
+
+================================================================================
+================================================================================
+  PRIORITY 2 — IMPORTANT FOR GROWING SHOPS  [10 features]
+================================================================================
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-01]  SUPPLIER RETURNS / DEBIT NOTE
+  Priority : IMPORTANT | Effort : M | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  When a shop receives wrong, damaged, or over-delivered goods from a supplier,
+  they need to return items and raise a Debit Note reducing what is owed to that
+  supplier. Currently there is no module for this. Returns to suppliers are done
+  informally and supplier credit balances are manually adjusted with no record.
+
+  WORKFLOW
+  --------
+  SELECT PURCHASE (GRN) → SELECT ITEMS TO RETURN → ENTER REASON
+  → DEBIT NOTE GENERATED → SUPPLIER CREDIT BALANCE REDUCED
+
+  USER STORIES
+  ------------
+  As a STORE_KEEPER, I want to record items being returned to a supplier with a
+  reason and quantity, so the supplier balance is correctly adjusted.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  supplier_returns:
+    id                  BIGSERIAL PRIMARY KEY
+    purchase_id         BIGINT REFERENCES purchases(id)
+    supplier_id         BIGINT REFERENCES suppliers(id)
+    debit_note_number   TEXT NOT NULL UNIQUE
+    total_return_amount NUMERIC(12,2) NOT NULL
+    notes               TEXT
+    created_by          UUID REFERENCES users(id)
+    created_at          TIMESTAMPTZ DEFAULT NOW()
+
+  supplier_return_items:
+    id              BIGSERIAL PRIMARY KEY
+    return_id       BIGINT REFERENCES supplier_returns(id) ON DELETE CASCADE
+    product_id      BIGINT REFERENCES products(id)
+    quantity        NUMERIC(10,3) NOT NULL
+    unit_price      NUMERIC(12,2) NOT NULL
+    total_price     NUMERIC(12,2) NOT NULL
+    reason          TEXT NOT NULL
+
+  ON RETURN:
+    UPDATE suppliers SET credit_balance = credit_balance - return_amount
+    UPDATE products  SET stock_quantity = stock_quantity - returned_qty
+
+  SCREENS NEEDED
+  --------------
+  - /supplier-returns           — list of all debit notes
+  - /supplier-returns/new       — create return (select purchase, select items)
+  - /supplier-returns/[id]      — view debit note detail
+  - PDF: Debit Note document
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Return can only be raised against an existing purchase
+  [ ] Quantity returned cannot exceed quantity originally received
+  [ ] Supplier credit_balance is reduced by return amount
+  [ ] Product stock_quantity is reduced by returned quantity
+  [ ] Debit note PDF generated with all return details
+  [ ] Audit log records the return
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-02]  CREDIT LIMIT ENFORCEMENT AT POS
+  Priority : IMPORTANT | Effort : XS | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The customer table has a credit_limit field but the POS never checks it. A
+  cashier can complete a CREDIT or SPLIT sale that pushes the customer well
+  beyond their approved credit limit. This is a financial risk and control gap.
+
+  WORKFLOW
+  --------
+  POS — customer selected — payment type = CREDIT or SPLIT
+  → System checks: (existing credit_balance + new sale total) vs credit_limit
+  → If OVER LIMIT: Show warning banner with current balance and limit
+  → Cashier can still override with OWNER/ADMIN approval (or block entirely)
+
+  IMPLEMENTATION
+  --------------
+  - In POS Server Action (createSale), add validation check before saving
+  - If exceeded: return error with message "Customer credit limit exceeded.
+    Current balance: Rs. X. Limit: Rs. Y. Available: Rs. Z."
+  - UI: Show warning in POS when customer is selected and payment type is CREDIT
+
+  DATABASE CHANGES
+  ----------------
+  No new tables. Add validation in sales.actions.ts createSale function.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Warning shown at POS when selected customer has < 10% available credit
+  [ ] Sale blocked (server error) when credit_balance + sale_total > credit_limit
+  [ ] Error message shows current balance, limit, and available amount clearly
+  [ ] CASH sales are never blocked regardless of credit balance
+  [ ] ADMIN can override by temporarily increasing customer credit limit
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-03]  DELIVERY NOTE / DISPATCH NOTE
+  Priority : IMPORTANT | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Many hardware shops deliver goods to construction sites. The driver needs a
+  delivery note (docket) listing what is being delivered, to whom, and where.
+  Currently only a sale receipt exists — no delivery documentation.
+
+  USER STORIES
+  ------------
+  As an OWNER, I want to generate a delivery note for any sale where goods are
+  being delivered to a customer's site, so the driver has documentation and the
+  customer can sign on receipt.
+
+  IMPLEMENTATION
+  --------------
+  - Add [Delivery Note] button on sale detail page (/sales/[id])
+  - Delivery note PDF includes: sale reference, customer name, delivery address,
+    item list with quantities, space for driver signature, customer signature
+  - No new database table needed — generated from existing sale data
+  - Optional: add delivery_address field to sale if different from customer address
+
+  SCREENS NEEDED
+  --------------
+  - Sale detail page: [Delivery Note] PDF button added
+  - PDF: Delivery Note document
+
+  DATABASE CHANGES
+  ----------------
+  Optional: ALTER TABLE sales ADD COLUMN delivery_address TEXT;
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Delivery note PDF generated from any completed sale
+  [ ] PDF includes items, quantities, customer address, signature lines
+  [ ] Delivery note reference number printed (derived from sale ID)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-04]  GROSS PROFIT REPORT
+  Priority : IMPORTANT | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The system has both buying_price and selling_price for every product and records
+  every quantity sold, but never reports profit. The owner cannot identify which
+  products are most profitable or which categories have the best margins.
+
+  REPORT STRUCTURE
+  ----------------
+  Product | Category | Qty Sold | Revenue | COGS | Gross Profit | Margin %
+  -------------------------------------------------------------------------
+  Sorted by Gross Profit descending by default
+
+  IMPLEMENTATION NOTE
+  -------------------
+  COGS = qty_sold × buying_price (from products table, current price)
+  Ideally buying_price should be snapshotted on sale_items at time of sale.
+  Consider adding buying_price_snapshot column to sale_items in a migration.
+
+  SCREENS NEEDED
+  --------------
+  - /reports/gross-profit
+  - Date range selector
+  - Filter by category
+  - Sort by: Revenue, Gross Profit, Margin %, Qty Sold
+  - [Download PDF] button
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Shows all products with at least one sale in the period
+  [ ] Gross profit calculated as Revenue - COGS
+  [ ] Margin % = (Gross Profit / Revenue) × 100
+  [ ] Category subtotals and grand total shown
+  [ ] Sortable by all financial columns
+  [ ] OWNER and ADMIN access only
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-05]  SALES BY CATEGORY REPORT
+  Priority : IMPORTANT | Effort : XS | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The Top Products report shows individual items but the owner cannot see which
+  entire category drives the most revenue. This is important for buying decisions
+  — if Electrical items account for 40% of revenue, that category needs more
+  attention and deeper stock.
+
+  SCREENS NEEDED
+  --------------
+  - New tab in existing Reports section: /reports/by-category
+  - Pie chart + table: Category | Revenue | % of Total | Qty Sold
+  - Date range filter
+  - [Download PDF] button
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Every category shown with total revenue for the period
+  [ ] % share of total revenue shown per category
+  [ ] Bar chart or pie chart visualization included
+  [ ] OWNER and ADMIN access
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-06]  DEAD STOCK REPORT
+  Priority : IMPORTANT | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Products that have not sold in 30, 60, or 90 days are tying up cash in the
+  warehouse. The owner has no way to identify these currently. Dead stock leads
+  to cash flow problems and wasted storage space.
+
+  REPORT STRUCTURE
+  ----------------
+  Product | Category | SKU | Last Sale Date | Days Since Last Sale | Stock Qty | Stock Value
+
+  Filter options: Not sold in 30 / 60 / 90 / 180 days
+
+  IMPLEMENTATION
+  --------------
+  Query: products LEFT JOIN sale_items → find products with no sale_items in
+  the last X days, or products with no sales at all.
+
+  SCREENS NEEDED
+  --------------
+  - /reports/dead-stock
+  - Threshold selector (30 / 60 / 90 / 180 days)
+  - Sorted by: days since last sale (longest first)
+  - Total stock value of dead stock shown at bottom
+  - [Download PDF] button
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Products with no sales in the selected threshold period shown
+  [ ] Products never sold also included (NULL last sale date)
+  [ ] Total value of dead stock shown (stock_qty × buying_price)
+  [ ] OWNER and ADMIN access
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-07]  BARCODE LABEL PRINTING
+  Priority : IMPORTANT | Effort : M | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  When new stock arrives without barcodes (or with supplier barcodes that need
+  replacing), the store keeper needs to print product price labels to stick on
+  items before shelving. Currently the system stores barcodes but cannot print
+  them.
+
+  USER STORIES
+  ------------
+  As a STORE_KEEPER, after receiving a GRN, I want to print barcode labels for
+  the received products so I can label them before putting them on the shelf.
+
+  LABEL FORMAT OPTIONS
+  --------------------
+  Option A: Thermal label printer (58mm or 40mm labels) — direct printing
+  Option B: A4 sheet with multiple labels (using PDF, print on label paper)
+
+  IMPLEMENTATION APPROACH
+  -----------------------
+  Use JsBarcode or bwip-js library to generate barcode images.
+  Generate a PDF (using existing @react-pdf/renderer) with a grid of labels.
+  Each label: Product name, SKU, barcode, selling price.
+
+  SCREENS NEEDED
+  --------------
+  - Product detail page: [Print Labels] button
+  - GRN detail page: [Print Labels for Received Items] button
+  - Label print dialog: quantity input, label size selector, preview
+  - PDF output: grid of labels per A4 page
+
+  DATABASE CHANGES
+  ----------------
+  None. Uses existing product data (name, sku, barcode, selling_price).
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Labels can be generated from product page or from GRN page
+  [ ] Owner inputs how many copies of each label to print
+  [ ] Label includes product name, SKU, barcode (if exists), price
+  [ ] PDF output fits standard A4 label sheets (e.g. 3×8 = 24 labels per page)
+  [ ] If product has no barcode, SKU barcode is generated instead
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-08]  REORDER AUTO-DRAFT PURCHASE ORDER
+  Priority : IMPORTANT | Effort : M | Dependency : P1-06 (Purchase Orders)
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  When a product hits its reorder level, the system shows a low stock alert — but
+  the owner still has to manually navigate to Purchase Orders, select the supplier,
+  add each low-stock product, and create the PO. The system already has all the
+  required data to do this automatically.
+
+  WORKFLOW
+  --------
+  Owner views Low Stock Report or Dashboard alert
+  → Clicks [Generate Draft POs] button
+  → System groups low-stock products by their linked supplier
+  → Creates one draft PO per supplier with all relevant low-stock items
+  → Owner reviews and adjusts quantities if needed
+  → Owner clicks [Send PO] to confirm
+
+  SCREENS NEEDED
+  --------------
+  - Low Stock report page: [Generate Draft POs] button
+  - Dashboard: [Auto-Generate POs] quick action
+  - Redirect to /purchase-orders after generation showing new drafts
+
+  IMPLEMENTATION
+  --------------
+  Server action: getLowStockProducts() → group by supplier_id
+  → for each supplier group → INSERT purchase_orders + purchase_order_items
+  → suggested qty = max(reorder_level * 2, 10) as a starting point
+  → owner can edit before confirming
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] One draft PO created per supplier from low-stock items
+  [ ] Products without a linked supplier are listed separately for manual PO
+  [ ] Draft quantities are sensible defaults (2× reorder level)
+  [ ] Owner can edit quantities before confirming PO
+  [ ] Already ordered items (existing open PO) not duplicated
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-09]  CUSTOMER PRICE TIERS / WHOLESALE PRICING
+  Priority : IMPORTANT | Effort : M | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Trade customers (contractors, hardware dealers) typically receive lower prices
+  than walk-in retail customers. Currently there is only one selling_price per
+  product. Giving manual discounts at POS is error-prone and inconsistent.
+
+  PRICE TIER STRUCTURE
+  --------------------
+  RETAIL      — default selling price (for walk-in customers)
+  WHOLESALE   — discounted trade price (for registered trade customers)
+  SPECIAL     — custom price for specific key accounts
+
+  IMPLEMENTATION APPROACH
+  -----------------------
+  Option A (Simple): Add wholesale_price column to products table.
+                     Add customer_type field (RETAIL / WHOLESALE) to customers.
+                     At POS, if customer is WHOLESALE type, use wholesale_price.
+
+  Option B (Advanced): Separate price_lists table with product_id and price per tier.
+                       More flexible but more complex.
+
+  Recommended: Option A (simple) — faster to build, covers 90% of cases.
+
+  DATABASE CHANGES (Option A)
+  ---------------------------
+  ALTER TABLE products ADD COLUMN wholesale_price NUMERIC(12,2);
+  ALTER TABLE customers ADD COLUMN customer_type TEXT DEFAULT 'RETAIL'
+    CHECK (customer_type IN ('RETAIL', 'WHOLESALE', 'SPECIAL'));
+
+  SCREENS NEEDED
+  --------------
+  - Products: add wholesale_price field to create/edit forms
+  - Customers: add customer_type selector to create/edit forms
+  - POS: auto-apply wholesale_price when WHOLESALE customer is selected
+  - POS: show "(Wholesale price applied)" indicator when active
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Wholesale price can be set per product (optional — defaults to retail)
+  [ ] Customer type (RETAIL/WHOLESALE) can be set per customer
+  [ ] POS automatically uses wholesale_price for WHOLESALE customers
+  [ ] If wholesale_price is not set, retail price is used as fallback
+  [ ] POS shows clear indicator when wholesale pricing is applied
+  [ ] Sale receipt shows the price actually charged (no confusion)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P2-10]  WHATSAPP / EMAIL RECEIPT DELIVERY
+  Priority : IMPORTANT | Effort : M | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Many customers, especially construction companies and trade businesses, prefer
+  a digital receipt via WhatsApp rather than a printed paper. In Sri Lanka,
+  WhatsApp is the primary business communication channel. Digital receipts also
+  reduce paper costs and are easier for customers to file.
+
+  USER STORIES
+  ------------
+  As a CASHIER, after completing a sale, I want to send the receipt to the
+  customer's WhatsApp so they have a digital copy without needing to print.
+
+  IMPLEMENTATION APPROACH
+  -----------------------
+  WhatsApp: Use WhatsApp Business API (Meta Cloud API) or wa.me deep link.
+    - Simple approach: Generate a pre-filled wa.me link with receipt summary text
+    - Advanced: WhatsApp Business API to send PDF attachment directly
+    - Simple approach requires no API key — works via browser opening WhatsApp Web
+
+  Email: Use Resend API (or Supabase email) to send receipt PDF as attachment.
+
+  SCREENS NEEDED
+  --------------
+  - After sale completion modal: [Send WhatsApp] and [Send Email] buttons
+  - WhatsApp button: opens wa.me/94XXXXXXXXX link with pre-filled message
+  - Email button: input field for email, [Send] fires server action
+  - Success toast: "Receipt sent to 077XXXXXXX"
+
+  WHATSAPP SIMPLE APPROACH (no API key needed)
+  --------------------------------------------
+  const message = `Receipt from [Shop Name]\nSale #${saleId}\nTotal: Rs.${total}\nDate: ${date}`
+  const url = `https://wa.me/94${phone}?text=${encodeURIComponent(message)}`
+  window.open(url, '_blank')
+  This opens WhatsApp Web/App with the pre-filled message — cashier hits Send.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] WhatsApp button appears on sale completion screen
+  [ ] Clicking WhatsApp opens pre-filled message with key sale details
+  [ ] Email sends receipt PDF as attachment to customer email
+  [ ] Phone/email pre-filled from customer record if customer is registered
+  [ ] Both options work for walk-in (manual phone entry) and registered customers
+
+
+================================================================================
+================================================================================
+  PRIORITY 3 — ADVANCED / MULTI-BRANCH FEATURES  [8 features]
+================================================================================
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-01]  MULTI-LOCATION / BRANCH MANAGEMENT
+  Priority : ADVANCED | Effort : XXL | Dependency : ALL other features
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  When the business grows to 2 or more locations, the current single-pool
+  stock model breaks down. Branch A cannot see Branch B stock. There is no
+  concept of which location a sale happened at, or which warehouse stock belongs
+  to.
+
+  DATABASE CHANGES (MAJOR ARCHITECTURE CHANGE)
+  --------------------------------------------
+  Add locations table:
+    id, name, address, phone, is_active, created_at
+
+  Add location_id foreign key to:
+    products (which location holds this stock)
+    sales (which location made this sale)
+    purchases (which location received this stock)
+    users (which location is this user assigned to)
+
+  This is a breaking change — requires data migration and all queries updated.
+
+  EFFORT NOTE
+  -----------
+  This is a full architectural change affecting every module. Should only be
+  started after all Priority 1 and Priority 2 features are stable and live.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Each user is assigned to a default location
+  [ ] Stock, sales, and purchases are scoped to location
+  [ ] Owner can see consolidated reports across all locations
+  [ ] ADMIN can manage all locations; managers see only their location
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-02]  INTER-BRANCH STOCK TRANSFER
+  Priority : ADVANCED | Effort : L | Dependency : P3-01
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  When Branch A has 0 units of an item and Branch B has 50, a stock transfer
+  document is needed to move goods between branches with proper documentation.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  stock_transfers:
+    id, from_location_id, to_location_id, status (DRAFT/SENT/RECEIVED),
+    transfer_number, notes, created_by, created_at
+
+  stock_transfer_items:
+    id, transfer_id, product_id, quantity, unit_cost
+
+  ON RECEIVE: stock reduced at source location, increased at destination.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Transfer document generated as PDF
+  [ ] Stock updated at both locations on completion
+  [ ] Audit log records the transfer
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-03]  SERIAL NUMBER / IMEI TRACKING
+  Priority : ADVANCED | Effort : XL | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  High-value items like drills, CCTV cameras, laptops, and motors each have a
+  unique serial number or IMEI. Tracking these enables: warranty management,
+  theft detection, service history, and identifying which unit was sold to whom.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  serial_numbers:
+    id, product_id, serial_number (UNIQUE), status (IN_STOCK/SOLD/RETURNED/DAMAGED),
+    purchase_item_id (when received), sale_item_id (when sold), created_at
+
+  ON GRN: Store keeper enters serial numbers per unit received.
+  ON SALE: POS prompts for serial number selection when selling serialized item.
+
+  SCREENS NEEDED
+  --------------
+  - GRN receive form: serial number input per unit received
+  - POS: serial number picker when item quantity = 1 for tracked items
+  - Product page: list of all serial numbers and their current status
+  - Search: find any serial number to see its full history
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Products can be flagged as "serial number tracked"
+  [ ] On GRN, serial numbers entered per unit and linked to product
+  [ ] On sale, specific serial number must be selected (or auto-assigned FIFO)
+  [ ] Serial number history shows: received date, sold date, customer
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-04]  PRODUCT VARIANTS (SIZE / COLOR / WEIGHT)
+  Priority : ADVANCED | Effort : XXL | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Many hardware products are the same item in different sizes. Currently PVC Pipe
+  ½ inch and PVC Pipe 1 inch are separate products with separate SKUs. With
+  variants, they would be one parent product with size variants — cleaner catalog,
+  fewer duplicates, better reporting.
+
+  DATABASE APPROACH
+  -----------------
+  Option A: Parent product (no SKU) + child variants (each with own SKU, price, stock)
+  Option B: Attribute-value table linked to products
+
+  This requires significant changes to the product schema and all related tables.
+  Recommended only after all other features are built. Very high complexity.
+
+  NOTE: The current approach (separate SKU per size) is acceptable and practical
+  for most hardware shops. Only build this if the client explicitly requests it.
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-05]  PROFORMA INVOICE
+  Priority : ADVANCED | Effort : S | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  For large orders where the customer pays in advance before delivery, a Proforma
+  Invoice is required. It looks like an invoice but is not a final tax document —
+  it is used to request payment. Common in construction supply for bulk orders.
+
+  IMPLEMENTATION
+  --------------
+  Very similar to Quotation (P1-09). Main difference:
+  - Proforma includes bank details / payment instructions
+  - Once payment received, Proforma converts to full Tax Invoice (sale)
+
+  Can be built as an extension of the Quotation module — just a different
+  document type and PDF template.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Proforma PDF includes payment terms, bank details, and validity period
+  [ ] Can be converted to a Sale when payment is confirmed
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-06]  STAFF ATTENDANCE TRACKING
+  Priority : ADVANCED | Effort : M | Dependency : None
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Even a basic attendance log helps manage shop staff — especially for part-time
+  workers and commission-based staff. Not a full HR/payroll system — just clock
+  in / clock out with a monthly summary.
+
+  DATABASE TABLES NEEDED
+  ----------------------
+  attendance:
+    id, user_id, clock_in TIMESTAMPTZ, clock_out TIMESTAMPTZ,
+    hours_worked NUMERIC(5,2), notes TEXT, date DATE
+
+  SCREENS NEEDED
+  --------------
+  - /attendance       — daily view, [Clock In] / [Clock Out] buttons
+  - /attendance/report — monthly summary per staff member (hours worked per day)
+  - Admin view: see all staff attendance in one table
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] Staff can clock in and out with one click
+  [ ] Hours worked auto-calculated
+  [ ] Monthly summary shows total hours per staff member
+  [ ] ADMIN sees all staff; staff sees own attendance only
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-07]  WHATSAPP PAYMENT REMINDERS
+  Priority : ADVANCED | Effort : S | Dependency : P2-10 (WhatsApp basics)
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  Credit customers who do not pay on time need to be reminded. Currently the
+  owner manually calls each customer. An automated or one-click WhatsApp reminder
+  from the Aged Debtors Report would save significant time.
+
+  IMPLEMENTATION
+  --------------
+  From Aged Debtors Report page, each customer row has a [Remind] button.
+  Clicking opens a WhatsApp link with a pre-filled professional reminder message:
+
+  "Dear [Customer Name], this is a reminder from [Shop Name].
+   Your account balance of Rs. [Amount] has been outstanding for [X] days.
+   Kindly arrange settlement at your earliest convenience.
+   Thank you — [Shop Name] | [Phone]"
+
+  No API key needed — uses wa.me deep link approach.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] [Remind] button on each row in Aged Debtors Report
+  [ ] Message pre-filled with customer name, amount, days overdue
+  [ ] Opens WhatsApp with pre-filled message ready to send
+  [ ] Reminder sent date can be logged per customer (optional)
+
+
+────────────────────────────────────────────────────────────────────────────────
+  [P3-08]  OFFLINE MODE / PROGRESSIVE WEB APP (PWA)
+  Priority : ADVANCED | Effort : XXL | Dependency : ALL features
+────────────────────────────────────────────────────────────────────────────────
+
+  BUSINESS CONTEXT
+  ----------------
+  The system is fully cloud-based. In Sri Lanka, internet disruptions are common.
+  If the internet goes down, the shop cannot process any sales. An offline-capable
+  system that syncs when connectivity returns would make the system much more
+  resilient.
+
+  TECHNICAL APPROACH
+  ------------------
+  - Register a Service Worker to cache the app shell
+  - Use IndexedDB to store pending sales when offline
+  - On reconnect, sync pending sales to Supabase
+  - Read-only data (product list) cached locally and refreshed when online
+
+  COMPLEXITY WARNING
+  ------------------
+  This is the most technically complex feature in the entire roadmap. It requires:
+  - Conflict resolution (what if stock was sold at both locations when offline?)
+  - Queue management for pending operations
+  - UI indicators for offline/online state and sync status
+  - Testing across browser cache scenarios
+
+  Recommended only after the system has been deployed and used live for at least
+  6 months, and only if internet disruption is a genuine daily problem for clients.
+
+  ACCEPTANCE CRITERIA
+  -------------------
+  [ ] POS screen is usable with no internet connection
+  [ ] Offline sales are queued locally and synced when connection returns
+  [ ] Clear indicator shown when system is in offline mode
+  [ ] Sync conflict handled gracefully (not silently ignored)
+
+
+================================================================================
+  MASTER FEATURE SUMMARY TABLE
+================================================================================
+
+  ID      FEATURE                           PRIORITY    EFFORT  STATUS
+  ------  --------------------------------  ----------  ------  ----------
+  P1-01   Hold Bill at POS                  CRITICAL    XS      PENDING
+  P1-02   Aged Debtors Report               CRITICAL    S       PENDING
+  P1-03   Aged Creditors Report             CRITICAL    S       PENDING
+  P1-04   Stock Valuation Report            CRITICAL    S       PENDING
+  P1-05   Customer Account Statement        CRITICAL    S       PENDING
+  P1-06   Purchase Order (PO)               CRITICAL    L       PENDING
+  P1-07   Expense Tracking                  CRITICAL    M       PENDING
+  P1-08   Profit & Loss Report              CRITICAL    M       PENDING
+  P1-09   Quotation / Estimate              CRITICAL    L       PENDING
+  P1-10   Physical Stocktake Module         CRITICAL    XL      PENDING
+  ------  --------------------------------  ----------  ------  ----------
+  P2-01   Supplier Returns / Debit Note     IMPORTANT   M       PENDING
+  P2-02   Credit Limit Enforcement POS      IMPORTANT   XS      PENDING
+  P2-03   Delivery Note / Dispatch Note     IMPORTANT   S       PENDING
+  P2-04   Gross Profit Report               IMPORTANT   S       PENDING
+  P2-05   Sales by Category Report          IMPORTANT   XS      PENDING
+  P2-06   Dead Stock Report                 IMPORTANT   S       PENDING
+  P2-07   Barcode Label Printing            IMPORTANT   M       PENDING
+  P2-08   Reorder Auto-Draft PO             IMPORTANT   M       PENDING
+  P2-09   Customer Price Tiers              IMPORTANT   M       PENDING
+  P2-10   WhatsApp / Email Receipt          IMPORTANT   M       PENDING
+  ------  --------------------------------  ----------  ------  ----------
+  P3-01   Multi-Location / Branch           ADVANCED    XXL     PENDING
+  P3-02   Inter-Branch Stock Transfer       ADVANCED    L       PENDING
+  P3-03   Serial Number / IMEI Tracking     ADVANCED    XL      PENDING
+  P3-04   Product Variants                  ADVANCED    XXL     PENDING
+  P3-05   Proforma Invoice                  ADVANCED    S       PENDING
+  P3-06   Staff Attendance Tracking         ADVANCED    M       PENDING
+  P3-07   WhatsApp Payment Reminders        ADVANCED    S       PENDING
+  P3-08   Offline Mode / PWA                ADVANCED    XXL     PENDING
+
+================================================================================
+  RECOMMENDED DEVELOPMENT ORDER (PHASE 2 ROADMAP)
+================================================================================
+
+  PHASE 2A — QUICK WINS (1–2 weeks)
+  ----------------------------------
+  1. P1-01  Hold Bill at POS              (XS — half day)
+  2. P2-02  Credit Limit Enforcement POS  (XS — half day)
+  3. P2-05  Sales by Category Report      (XS — half day)
+  4. P1-02  Aged Debtors Report           (S  — 1 day)
+  5. P1-03  Aged Creditors Report         (S  — 1 day)
+  6. P1-04  Stock Valuation Report        (S  — 1 day)
+  7. P1-05  Customer Account Statement    (S  — 1 day)
+  8. P2-03  Delivery Note PDF             (S  — 1 day)
+  9. P2-04  Gross Profit Report           (S  — 1 day)
+  10. P2-06 Dead Stock Report             (S  — 1 day)
+
+  PHASE 2B — CORE BUSINESS FEATURES (3–4 weeks)
+  -----------------------------------------------
+  11. P1-07  Expense Tracking             (M  — 2 days)
+  12. P1-08  P&L Report                   (M  — 2 days, needs P1-07)
+  13. P2-09  Customer Price Tiers         (M  — 2 days)
+  14. P2-10  WhatsApp Receipt             (M  — 2 days)
+  15. P2-07  Barcode Label Printing       (M  — 2 days)
+  16. P2-01  Supplier Returns             (M  — 3 days)
+
+  PHASE 2C — ADVANCED FEATURES (4–6 weeks)
+  ------------------------------------------
+  17. P1-06  Purchase Order Module        (L  — 5 days)
+  18. P2-08  Reorder Auto-Draft PO        (M  — 2 days, needs P1-06)
+  19. P1-09  Quotation Module             (L  — 5 days)
+  20. P1-10  Physical Stocktake           (XL — 8 days)
+
+  PHASE 3 — ENTERPRISE (future)
+  ------------------------------
+  21. P3-03  Serial Number Tracking       (XL)
+  22. P3-06  Staff Attendance             (M)
+  23. P3-05  Proforma Invoice             (S)
+  24. P3-07  WhatsApp Payment Reminders   (S)
+  25. P3-01  Multi-Location Branch        (XXL — full architecture change)
+  26. P3-02  Inter-Branch Transfer        (L — needs P3-01)
+  27. P3-08  Offline PWA                  (XXL — last priority)
+
+================================================================================
+  FILE USAGE NOTES FOR DEVELOPER
+================================================================================
+
+  - When starting a feature, update STATUS from PENDING → IN_PROGRESS → DONE
+  - Each feature section is self-contained — read it, build it, mark it done
+  - All new database tables must have RLS policies following the existing pattern
+    in schema.sql (see PART 5 — RLS POLICIES)
+  - All new server actions go in src/actions/ following the existing pattern
+  - All new Zod schemas go in src/lib/validations/
+  - All new pages go under src/app/(dashboard)/[feature-name]/
+  - Role access: follow the existing role matrix (ADMIN > OWNER > CASHIER/STORE_KEEPER)
+  - Every write operation (INSERT/UPDATE/DELETE) must call writeAuditLog()
+  - All PDF components go in src/components/pdf/
+
+================================================================================
+  END OF DOCUMENT
+  NUVI Engineering PVT LTD | info@nuvi.lk | 077 662 2922
+================================================================================
