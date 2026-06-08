@@ -15,16 +15,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // 12-hour session expiry check
+  // 12-hour session expiry check — cookie absent means it expired after 12h
   const loginAtRaw = request.cookies.get('session_login_at')?.value
-  if (loginAtRaw) {
-    const loginAt = parseInt(loginAtRaw, 10)
-    if (!isNaN(loginAt) && Date.now() - loginAt > SESSION_DURATION_MS) {
-      await supabase.auth.signOut()
-      const response = NextResponse.redirect(new URL('/login?reason=expired', request.url))
-      response.cookies.delete('session_login_at')
-      return response
-    }
+  if (!loginAtRaw) {
+    await supabase.auth.signOut()
+    return NextResponse.redirect(new URL('/login?reason=expired', request.url))
+  }
+  const loginAt = parseInt(loginAtRaw, 10)
+  if (!isNaN(loginAt) && Date.now() - loginAt > SESSION_DURATION_MS) {
+    await supabase.auth.signOut()
+    const response = NextResponse.redirect(new URL('/login?reason=expired', request.url))
+    response.cookies.delete('session_login_at')
+    return response
   }
 
   // Use service role to bypass RLS — ensures we always get the user row

@@ -16,8 +16,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const cookieStore = await cookies()
   const loginAtRaw = cookieStore.get('session_login_at')?.value
-  const loginAt    = loginAtRaw ? parseInt(loginAtRaw, 10) : Date.now()
-  const expiresAt  = loginAt + SESSION_DURATION_MS
+  if (!loginAtRaw) redirect('/login?reason=expired')
+  const loginAt   = parseInt(loginAtRaw, 10)
+  const expiresAt = loginAt + SESSION_DURATION_MS
 
   return (
     <UserProvider initialUser={user}>

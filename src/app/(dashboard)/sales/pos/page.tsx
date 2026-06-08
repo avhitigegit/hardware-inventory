@@ -99,6 +99,7 @@ export default function PosPage() {
 
   const addToCart = (product: any) => {
     if (!product.is_active) { toast.error(`${product.name} is not available.`); return }
+    if (product.stock_quantity <= 0) { toast.error(`${product.name} is out of stock.`); return }
     setCart(prev => {
       const existing = prev.find(i => i.product_id === product.id)
       if (existing) return prev.map(i => i.product_id === product.id ? { ...i, quantity: i.quantity + 1 } : i)
